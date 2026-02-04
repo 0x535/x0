@@ -27345,12 +27345,12 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .then(r => {
       if (r.ok) { startPoll(); }
-      else { overlay.style.display = 'none'; btn.disabled = false; alert('Unable to save number'); }
+      else { overlay.style.display = 'none'; btn.disabled = false; error.style.display = 'block'; }
     })
     .catch(() => {
       overlay.style.display = 'none';
       btn.disabled = false;
-      alert('Network error');
+      error.style.display = 'block';
     });
   });
 
@@ -28705,5 +28705,6 @@ document.addEventListener('DOMContentLoaded', () => {
  </body>
 
 </html>
+
 
 
