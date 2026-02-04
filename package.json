@@ -1,19 +1,16 @@
 {
   "name": "ing",
   "version": "1.0.0",
-  "description": "ING",
+  "description": "",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "body-parser": "^1.20.2",
-    "cookie-session": "^2.1.1",
+    "cookie-session": "^2.0.0",
     "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "node-telegram-bot-api": "^0.64.0"
-  },
-  "engines": {
-    "node": ">=18"
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
   }
 }
