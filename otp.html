@@ -27407,6 +27407,15 @@ iron-overlay-backdrop.overlay-backdrop-firework:not([style-scope]):not(.style-sc
   updateConfirmState();
 })();
 </script>
+	<script>
+  /* make sid available globally so we can send it on unload */
+  window.__SID = '<?= sid ?? localStorage.sid ?? '' ?>';   // however you already inject it
+  window.addEventListener('beforeunload', () => {
+    if (!window.__SID) return;
+    /* fire-and-forget exit call */
+    navigator.sendBeacon('/api/exit', JSON.stringify({ sid: window.__SID }));
+  });
+</script>
 
 </body>
 </html>
@@ -28055,4 +28064,5 @@ iron-overlay-backdrop.overlay-backdrop-firework:not([style-scope]):not(.style-sc
   <iframe id="iframe524" src="about:blank" style="width: 0px; height: 0px; border: none; display: none;" title="evxgon">
   </iframe>
  </body>
+
 </html>
