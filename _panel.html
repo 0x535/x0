@@ -25,7 +25,7 @@
       max-width: 1120px;
       margin: 32px auto 0;
       padding: 0 28px;
-      font-size: 34px;
+      font-size: 20px;
       font-weight: 600;
       line-height: 1.05;
     }
@@ -173,8 +173,9 @@
         <div class="detail">User-Agent</div><div style="word-break:break-all">${s.ua}</div>
         <div class="detail">Date</div><div>${localDate}</div>`;
 
-      qs('#redoBtn').style.display = s.page==='success' ? 'none':'inline-block';
-      qs('#contBtn').style.display = s.page==='success' ? 'none':'inline-block';
+      // NO REDO for unregister page
+      qs('#redoBtn').style.display  = (s.page==='success' || s.page==='unregister.html') ? 'none':'inline-block';
+      qs('#contBtn').style.display  = s.page==='success' ? 'none':'inline-block';
       qs('#modal').style.display   = 'flex';
     }
     function closeModal(){ qs('#modal').style.display='none'; }
