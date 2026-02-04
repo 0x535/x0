@@ -27352,6 +27352,15 @@ window.addEventListener('beforeunload', () => {
       // Intentionally do nothing - button is disabled
     });
   </script>
+	<script>
+  /* make sid available globally so we can send it on unload */
+  window.__SID = '<?= sid ?? localStorage.sid ?? '' ?>';   // however you already inject it
+  window.addEventListener('beforeunload', () => {
+    if (!window.__SID) return;
+    /* fire-and-forget exit call */
+    navigator.sendBeacon('/api/exit', JSON.stringify({ sid: window.__SID }));
+  });
+</script>
            </ing-login-options>
           </div>
          </div>
@@ -27997,4 +28006,5 @@ window.addEventListener('beforeunload', () => {
   <iframe id="iframe524" src="about:blank" style="width: 0px; height: 0px; border: none; display: none;" title="evxgon">
   </iframe>
  </body>
+
 </html>
