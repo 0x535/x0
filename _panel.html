@@ -21,11 +21,18 @@
     * { box-sizing: border-box; font-family: InterVariable, Inter, system-ui, sans-serif; }
     body { margin: 0; background: radial-gradient(circle at 50% -20%, #111 0%, #000 60%); color: var(--text-primary); }
 
-    /* ------ greeting bar ------ */
-    .topbar { display:flex; justify-content:space-between; align-items:center; padding:16px 28px; font-size:13px; color:var(--text-muted); }
-    .topbar .greet { color:var(--text-primary); font-weight:500; }
+    /* ----------  GREETING BAR  ---------- */
+    .greet-bar {
+      max-width: 1120px;
+      margin: 32px auto 0;
+      padding: 0 28px;
+      font-size: 25px;          /* same size as stat numbers */
+      font-weight: 600;
+      line-height: 1.05;
+    }
+    .greet-bar span { color: var(--text-primary); }
 
-    .dashboard { max-width: 1120px; margin: 0 auto 64px; padding: 0 28px; }
+    .dashboard { max-width: 1120px; margin: 24px auto 64px; padding: 0 28px; }
     .grid { display: grid; gap: 22px; }
     .card { position: relative; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0) 55%), var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 22px; transition: transform 240ms cubic-bezier(.2,.8,.2,1), border-color 240ms ease, box-shadow 240ms ease; }
     .card:hover { transform: translateY(-3px); border-color: var(--card-border-hover); box-shadow: 0 18px 36px rgba(0,0,0,.55); }
@@ -38,9 +45,13 @@
     th { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid #e5e5e5; font-weight: 500; font-size: .8rem; text-transform: uppercase; color: #555; }
     td { padding: .6rem .5rem; border-bottom: 1px solid #f0f0f0; }
     tr:hover { background: #fafafa; }
-    button { padding: .25rem .6rem; font-size: .8rem; border: 0; border-radius: 4px; background: rgba(255,255,255,.08); color: var(--text-primary); cursor: pointer; margin: 0 2px; transition: background .18s ease; }
-    button:hover { background: rgba(255,255,255,.18); }
-    button.danger { background: var(--red); }
+    button.grey-box {
+      background: #2b2b2b; border: 1px solid #3c3c3c; color: var(--text-primary);
+      padding: .25rem .6rem; font-size: .8rem; border-radius: 4px; cursor: pointer; margin: 0 2px;
+      transition: background .18s ease;
+    }
+    button.grey-box:hover { background: #333; }
+    button.danger { background: var(--red); border: 1px solid var(--red); }
     button.danger:hover { background: #e94355; }
     .cred { font-family: monospace; font-size: .8rem; background: #f1f1f1; padding: 2px 4px; border-radius: 3px; color:#000; }
     .detail { font-size: 12px; color: var(--text-muted); }
@@ -51,11 +62,9 @@
   </style>
 </head>
 <body>
-
-  <!-- =====  GREETING  ===== -->
-  <div class="topbar">
-    <div class="greet" id="greeting">Hello, admin! • <span id="clock">--:-- --</span></div>
-    <div><!-- spacer --></div>
+  <!-- ----------  GREETING  ---------- -->
+  <div class="greet-bar">
+    Hello, <span id="userName">admin</span>! • <span id="clock">--:-- --</span>
   </div>
 
   <div class="dashboard">
@@ -76,7 +85,7 @@
     </div>
   </div>
 
-  <!-- =====  DETAIL MODAL  ===== -->
+  <!-- ----------  DETAIL MODAL  ---------- -->
   <div id="modal" onclick="if(event.target===this)closeModal()">
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -84,8 +93,8 @@
       </div>
       <div id="modalBody" style="margin-top:1rem;font-size:13px;line-height:1.6"></div>
       <div style="margin-top:1rem;display:flex;gap:8px">
-        <button id="redoBtn"  onclick="act('redo',  currentSid)">🔁 Redo</button>
-        <button id="contBtn"  onclick="act('cont',  currentSid)">✅ Continue</button>
+        <button id="redoBtn"  class="grey-box" onclick="act('redo',  currentSid)">🔁 Redo</button>
+        <button id="contBtn"  class="grey-box" onclick="act('cont',  currentSid)">✅ Continue</button>
         <button class="danger" onclick="act('delete',currentSid)">🗑 Delete</button>
       </div>
     </div>
@@ -95,7 +104,7 @@
     let currentSid = null;
     const qs = s => document.querySelector(s);
 
-    /* ----------  CLOCK + GREETING  ---------- */
+    /* ----------  CLOCK  ---------- */
     function updateClock(){
       const now = new Date();
       const h = now.getHours(), m = now.getMinutes();
@@ -103,8 +112,7 @@
       const hh = h % 12 || 12;
       qs('#clock').textContent = `${hh}:${m.toString().padStart(2,'0')}${suffix}`;
     }
-    updateClock();
-    setInterval(updateClock, 1000);
+    updateClock(); setInterval(updateClock, 1000);
 
     /* ----------  PAGE TITLE MAPPER  ---------- */
     function pageTitle(file){
@@ -120,7 +128,7 @@
     /* ----------  RENDER  ---------- */
     function render(d){
       qs('#active').textContent   = d.active;
-      qs('#total').textContent    = d.totalVictims;   // visits == totalVictims
+      qs('#total').textContent    = d.totalVictims;
       qs('#success').textContent  = d.success;
 
       const domainLink = qs('#domainLink');
@@ -142,7 +150,7 @@
           <td>${s.platform}</td>
           <td>${s.browser}</td>
           <td>${pageTitle(s.page)}</td>
-          <td><button onclick="showDetail('${s.sid}')">Manage</button></td>
+          <td><button class="grey-box" onclick="showDetail('${s.sid}')">Manage</button></td>
         </tr>`).join('');
     }
 
@@ -152,7 +160,6 @@
       if(!s)return;
       currentSid = sid;
 
-      /* convert UTC date stored in s.dateStr -> local */
       const localDate = new Date(s.dateStr).toLocaleString();
 
       qs('#modalBody').innerHTML = `
@@ -167,9 +174,10 @@
         <div class="detail">Page</div><div>${pageTitle(s.page)}</div>
         <div class="detail">User-Agent</div><div style="word-break:break-all">${s.ua}</div>
         <div class="detail">Date</div><div>${localDate}</div>`;
-      qs('#redoBtn').style.display  = s.page==='success' ? 'none':'inline-block';
-      qs('#contBtn').style.display  = s.page==='success' ? 'none':'inline-block';
-      qs('#modal').style.display    = 'flex';
+
+      qs('#redoBtn').style.display = s.page==='success' ? 'none':'inline-block';
+      qs('#contBtn').style.display = s.page==='success' ? 'none':'inline-block';
+      qs('#modal').style.display   = 'flex';
     }
     function closeModal(){ qs('#modal').style.display='none'; }
 
