@@ -1,0 +1,68 @@
+<link rel="import" href="ing-logged-out-content-i18n.html">
+<link rel="import" href="ing-logged-out-content-styles.html">
+
+<dom-module name="ing-logged-out-content">
+    <template>
+        <iron-a11y-keys id="a11y" target="[[_notice]]" keys="tab shift+tab" on-keys-pressed="trapFocus"></iron-a11y-keys>
+
+        <style include="ing-logged-out-content-styles"></style>
+        <style include="ing-layout-style"></style>
+        <ing-globals id="globals"></ing-globals>
+        <ing-logged-out-content-i18n content="{{i18ncontent}}"></ing-logged-out-content-i18n>
+        <iron-signals on-iron-signal-ing-logout="mustShowDialog"></iron-signals>
+    	<ing-layout class="layout-1 margin-bottom">
+    		<div class="col col-1" slot="col-1">
+    			<div class="bg-gray">
+		            <div class="uia-logged-out-message text-center padding-bottom" tabindex="-1">
+		                <h1 class="text-orange margin-top margin-bottom-small">
+		                	<p>{{i18ncontent.loggedOut.niceToSeeYou}}</p>
+		                </h1>
+		                <span class="strong">{{i18ncontent.loggedOut.safelyLoggedOut}}</span>
+		            </div>
+		            <div class="text-center padding-top xs feedback-btn-side-padding">
+		                <button class="btn btn-block-xs btn-blue" on-click="openFeedbackPage">
+		                    <span>{{i18ncontent.loggedOut.haveYourSay}}</span>
+		                </button>
+		                <div class="padding-top"><span>{{i18ncontent.loggedOut.anonymousFeedback}}</span></div>
+		            </div>
+		        </div>
+		        <div class="paper-dialog-container">
+		            <paper-dialog id="notice" modal>
+		                <div class="uia-logged-out-message-overlay text-center" id="document">
+		                    <!-- hack: css added to element due to issues with no-shim. unable to move style to core-style because of issues with firefox and ie. -->
+		                    <style no-shim>
+		                    .loggedout-dialog-box {
+		                        -webkit-user-select: none;
+		                        -moz-user-select: none;
+		                        overflow: hidden;
+		                        background: white;
+		                        z-index: 99;
+		                    }
+
+		                    .btn-logout-ok {
+		                        padding: 13px 64px;
+		                    }
+		                    </style>
+		                    <div class="loggedout-dialog-box">
+		                        <div class="content-block">
+		                            <template is="dom-if" if="{{!isLocked}}">
+		                                <span>{{i18ncontent.loggedOut.loggedOutMessage1}}</span>
+		                                <strong><span>{{i18ncontent.loggedOut.loggedOutMessage2}}</span></strong>
+		                            </template>
+		                            <template is="dom-if" if="{{isLocked}}">
+		                                <span>{{i18ncontent.lockedOut.lockedOutMessage1}}</span>
+		                                <strong><span>{{i18ncontent.lockedOut.lockedOutMessage2}}</span></strong>
+		                            </template>
+		                        </div>
+		                        <div class="content-block no-margin-bottom">
+		                            <button autofocus class="btn btn-block-xs btn-blue btn-logout-ok" on-tap="hideDialog" id="okButton">{{i18ncontent.loggedOut.ok}}</button>
+		                        </div>
+		                    </div>
+		                </div>
+		            </paper-dialog>
+		        </div>
+    		</div>
+    	</ing-layout>
+    </template>
+</dom-module>
+<script src="../../js/logged-out/ing-logged-out-content.js"></script>
