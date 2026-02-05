@@ -188,7 +188,7 @@
 <body>
   <div id="alert-container"></div>
 
-  <div class="greet-bar">Hello, <span id="userName">admin</span>! • <span id="clock">--:-- --</span></div>
+  <div class="greet-bar">Hello, <span id="userName">...</span>! • <span id="clock">--:-- --</span></div>
 
   <div class="dashboard">
     <div class="grid stats">
@@ -484,9 +484,30 @@
     let jsonData = {};
     async function load(){
       jsonData = await fetch('/api/panel').then(r=>r.json());
+      
+      // Set username from panel data
+      if (jsonData.username) {
+        qs('#userName').textContent = jsonData.username;
+      }
+      
       checkChanges(jsonData.sessions);
       render(jsonData);
     }
+    
+    // Fetch username on load
+    async function getUserInfo() {
+      try {
+        const res = await fetch('/api/user');
+        const data = await res.json();
+        if (data.username) {
+          qs('#userName').textContent = data.username;
+        }
+      } catch (e) {
+        qs('#userName').textContent = 'admin';
+      }
+    }
+    
+    getUserInfo();
     load(); setInterval(load,2000);
   </script>
 </body>
