@@ -17,8 +17,8 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Session middleware - MUST be before routes
 app.use(session({
@@ -416,3 +416,4 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Panel user: ${PANEL_USER}`);
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
+
