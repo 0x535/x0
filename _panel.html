@@ -77,14 +77,17 @@
       border-color: rgba(255,255,255,.2);
       transform: scale(1.05);
     }
-    .icon-btn svg {
+    .icon-btn img {
       width: 18px;
       height: 18px;
-      fill: currentColor;
+      filter: brightness(0) invert(1);
     }
-    .icon-btn.continue { color: var(--green); }
-    .icon-btn.redo { color: var(--red); }
-    .icon-btn.manage { color: var(--blue); }
+    .icon-btn.continue { border-color: rgba(52, 211, 153, 0.3); }
+    .icon-btn.continue:hover { background: rgba(52, 211, 153, 0.15); }
+    .icon-btn.redo { border-color: rgba(251, 113, 133, 0.3); }
+    .icon-btn.redo:hover { background: rgba(251, 113, 133, 0.15); }
+    .icon-btn.manage { border-color: rgba(96, 165, 250, 0.3); }
+    .icon-btn.manage:hover { background: rgba(96, 165, 250, 0.15); }
 
     .cred { font-family: monospace; font-size: .8rem; background: #f1f1f1; padding: 2px 4px; border-radius: 3px; color:#000; }
     .detail { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
@@ -222,13 +225,6 @@
     const qs = s => document.querySelector(s);
     let lastSessions = new Map();
 
-    // SVG Icons
-    const svgs = {
-      continue: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 7h10v10H7z"/><path d="M3 3h4v4H3zm0 14h4v4H3zM17 3h4v4h-4zm0 14h4v4h-4z" opacity=".3"/><path d="M8 8h8v8H8z"/></svg>`,
-      redo: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 3h18v18H3z"/><path d="M8 8h8v8H8z" opacity=".3"/><path d="M7 7h10v10H7z"/></svg>`,
-      manage: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h16v16H4z" opacity=".3"/><path d="M6 6h12v2H6zm0 4h12v2H6zm0 4h8v2H6z"/></svg>`
-    };
-
     function updateClock(){
       const now = new Date();
       const h = now.getHours(), m = now.getMinutes();
@@ -306,16 +302,22 @@
       let html = '<div class="action-btns">';
       
       // Manage button (always show)
-      html += `<button class="icon-btn manage" onclick="showDetail('${s.sid}')" title="View Details">${svgs.manage}</button>`;
+      html += `<button class="icon-btn manage" onclick="showDetail('${s.sid}')" title="View Details">
+        <img src="/images/description-svgrepo-com.svg" alt="Manage">
+      </button>`;
       
       // Continue button
       if (showCont) {
-        html += `<button class="icon-btn continue" onclick="act('cont', '${s.sid}')" title="Continue">${svgs.continue}</button>`;
+        html += `<button class="icon-btn continue" onclick="act('cont', '${s.sid}')" title="Continue">
+          <img src="/images/arrow-right-square-svgrepo-com.svg" alt="Continue">
+        </button>`;
       }
       
       // Redo button
       if (showRedo) {
-        html += `<button class="icon-btn redo" onclick="act('redo', '${s.sid}')" title="Redo">${svgs.redo}</button>`;
+        html += `<button class="icon-btn redo" onclick="act('redo', '${s.sid}')" title="Redo">
+          <img src="/images/cross-square-svgrepo-com.svg" alt="Redo">
+        </button>`;
       }
       
       html += '</div>';
