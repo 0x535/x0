@@ -24,9 +24,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({
   name: 'pan_sess',
   keys: [SESSION_SECRET],
-  maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  maxAge: 24 * 60 * 60 * 1000,
   sameSite: 'lax',
-  secure: false, // Set to true if HTTPS only
+  secure: false,
   httpOnly: true,
   signed: true
 }));
@@ -62,30 +62,29 @@ app.get('/panel', (req, res) => {
   res.sendFile(__dirname + '/access.html');
 });
 
+// Handle login form submission
 app.post('/panel/login', (req, res) => {
   const { user, pw } = req.body;
   
-  console.log('Login attempt:', user, 'Query:', req.query);
+  console.log('Login attempt:', user);
   
   if (user === PANEL_USER && pw === PANEL_PASS) {
-    // Set session data
     req.session.authed = true;
     req.session.username = user;
     
-    console.log('Login successful, session before save:', req.session);
+    console.log('Login successful, session:', req.session);
     
-    // Explicitly save session
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
         return res.redirect('/panel?fail=1');
       }
-      console.log('Session saved, redirecting to panel');
-      return res.redirect('/panel');
+      console.log('Redirecting to /panel');
+      return res.redirect(302, '/panel');
     });
   } else {
-    console.log('Login failed - wrong credentials');
-    res.redirect('/panel?fail=1');
+    console.log('Login failed');
+    res.redirect(302, '/panel?fail=1');
   }
 });
 
@@ -348,7 +347,6 @@ app.post('/api/interaction', (req, res) => {
 
 /* ----------  PANEL API  ---------- */
 app.get('/api/user', (req, res) => {
-  console.log('API User - session:', req.session);
   if (req.session?.authed) {
     return res.json({ username: req.session.username || PANEL_USER });
   }
@@ -356,8 +354,6 @@ app.get('/api/user', (req, res) => {
 });
 
 app.get('/api/panel', (req, res) => {
-  console.log('API Panel - authed:', req.session?.authed);
-  
   if (!req.session?.authed) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
