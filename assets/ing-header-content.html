@@ -1,0 +1,66 @@
+<link rel="import" href="ing-header-content-i18n.html">
+<link rel="import" href="ing-header-content-styles.html">
+
+
+<dom-module id="ing-header-content">
+    <template>
+        <style include="ing-shared-styles"></style>
+        <style include="ing-header-content-styles"></style>
+        <ing-header-content-i18n id="i18nHeader" content="{{i18ncontent}}"></ing-header-content-i18n>
+
+        <header class="ING-header" role="banner">
+
+            <div class="global-header">
+
+                <div class="container">
+
+                    <div class="control-buttons-wrapper">
+
+                        <a href="{{i18ncontent.publicUrl}}" title="ING">
+                            <div class="main-logo"><img src="/ing-style/img/logos/Logo-sm@2x.png" width="174" height="44" alt="ING Home" />
+                            </div>
+                        </a>
+
+                        <div class="mini-bar-container">
+                            <div id="main-menu-button" class="menu-button" on-click="toggleMenu"></div>
+                            <a href="{{i18ncontent.publicUrl}}" class="mini-logo"></a>
+                        </div>
+
+                        <!-- main menu -->
+                        <div class="mobile-menu-wrapper" role="navigation">
+                            <!-- global menu -->
+                            <ul class="global-menu-container">
+                                <li><a href="{{i18ncontent.aboutUsLink}}">{{i18ncontent.aboutUs}}</a>
+                                </li>
+                                <li><a href="{{i18ncontent.contactUsLink}}">{{i18ncontent.contactUs}}</a>
+                                </li>
+                                <li><a href="{{i18ncontent.helpAndSupportLink}}">{{i18ncontent.helpAndSupport}}</a>
+                                </li>
+                                <li><a href="{{i18ncontent.securityLink}}">{{i18ncontent.securityLabel}}</a>
+                                </li>
+                            </ul>
+                        </div>
+
+
+                        <div id="login-menu-button" class="login-container">
+                            <div class="login-button-container">
+                                
+                            </div>
+                        </div>
+
+                        <!-- BSB number -->
+                        <div class="bsb-container">
+                            <span><strong>{{i18ncontent.bsb}}</strong></span>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </header>
+
+    </template>
+</dom-module>
+
+<script src="../../js/header/ing-header-content.js"></script>

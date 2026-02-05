@@ -1,0 +1,169 @@
+<link rel="import" href="ing-footer-i18n.html">
+<link rel="import" href="ing-footer-styles.html">
+
+<dom-module id="ing-footer-content">
+    <template>
+        <style include="ing-shared-styles"></style>
+        <style include="ing-footer-styles"></style>
+        <ing-globals id="globals" is-logged-in="{{loggedin}}"></ing-globals>
+        <ing-footer-i18n id="i18nFooter" content="{{i18ncontent}}"></ing-footer-i18n>
+        <iron-signals
+            on-iron-signal-set-blank-page="handleSetBlankPage"
+            on-iron-signal-hamburger-clicked="handleHamburgerClicked">
+        </iron-signals>
+        <template is="dom-if" if="{{showfooter}}">
+            <template is="dom-if" if="{{!loggedin}}">
+                <footer id="footerWrapper" class="ING-footer" role="contentinfo">
+                    <article class="generic-footer">
+                        <div class="container">
+                            <span class="footer-logo"><a href="http://www.ing.com.au/"><img alt="{{i18ncontent.links.INGDirectHome}}" src="/ing-style/img/logos/Logo-footer-public@2x.png" width="154" height="24"></a></span>
+                            <ul class="main-menu-container no-margin-bottom" role="navigation">
+                                <li>
+                                    <a href="http://www.ing.com.au/help-and-support.html"><h5 class="footer-title">{{i18ncontent.help.title}}</h5></a>
+                                    <ul class="hidden-xs footer-text">
+                                        <li><a href="http://www.ing.com.au/help-and-support/faqs/general-faqs.html">{{i18ncontent.help.faq}}</a>
+                                        </li>
+                                        <li><a href="http://www.ing.com.au/help-and-support/documents-and-forms/general.html">{{i18ncontent.help.docs}}</a>
+                                        </li>
+                                        <li><a href="http://www.ing.com.au/help-and-support/tips-hints-guides/general.html">{{i18ncontent.help.tips}}</a>
+                                        </li>
+                                        <li><a href="http://www.ing.com.au/ways-to-bank.html">{{i18ncontent.help.ways}}</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <a href="http://www.ing.com.au/rates-and-fees.html"><h5 class="footer-title">{{i18ncontent.rates.title}}</h5></a>
+                                    <ul class="hidden-xs footer-text">
+                                        <li><a href="http://www.ing.com.au/rates-and-fees/term-deposit-rates.html">{{i18ncontent.rates.termDeposit}}</a>
+                                        </li>
+                                        <li><a href="http://www.ing.com.au/rates-and-fees/savings-interest-rates.html">{{i18ncontent.rates.savings}}</a>
+                                        </li>
+                                        <li><a href="http://www.ing.com.au/rates-and-fees/home-loan-rates.html">{{i18ncontent.rates.homeLoan}}</a>
+                                        </li>
+                                        <li><a href="http://www.ing.com.au/rates-and-fees/superannuation-rates.html">{{i18ncontent.rates.super}}</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <a href="http://www.ing.com.au/calculators-and-tools.html"><h5 class="footer-title">{{i18ncontent.tools.title}}</h5></a>
+                                    <ul class="hidden-xs footer-text">
+                                        <li><a href="http://www.ing.com.au/savings/calculators/savings.html">{{i18ncontent.tools.savings}}</a>
+                                        </li>
+                                        <li><a href="http://www.ing.com.au/savings/calculators/budget-planning.html">{{i18ncontent.tools.budget}}</a>
+                                        </li>
+                                        <li><a href="http://www.ing.com.au/home-loans/calculators/borrowing-power.html">{{i18ncontent.tools.borrowingPower}}</a>
+                                        </li>
+                                        <li><a href="http://www.ing.com.au/superannuation/calculators/retirement-planner.html">{{i18ncontent.tools.retirement}}</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="visible-xs">
+                                    <a href="http://www.ing.com.au/contact-us.html"><h5 class="footer-title">{{i18ncontent.contact.smallTitle}}</h5></a>
+                                </li>
+                                <li class="sns-menu">
+                                    <h5 class="footer-title hidden-xs">{{i18ncontent.contact.title}}</h5>
+                                    <ul class="sns-container footer-text">
+                                        <li>
+                                            <a href=" https://twitter.com/ING_Aust" target="_blank"><img class="icon-x" src="./img/x-footer.svg" alt="{{i18ncontent.contact.twitter}}"/><span class="title">{{i18ncontent.contact.twitter}}</span></a>
+                                            </li>
+                                            <li><a href="https://www.facebook.com/INGAust/" target="_blank"><span class="icon-sns facebook"></span><span class="title">{{i18ncontent.contact.facebook}}</span></a>
+                                            </li>
+                                            <li><a href="https://youtube.com/c/INGaust" target="_blank"><span class="icon-sns youtube"></span><span class="title">{{i18ncontent.contact.youtube}}</span></a>
+                                            </li>
+                                            <li><a href="http://blog.ing.com.au/" target="_blank"><span class="icon-sns blog"></span><span class="title">{{i18ncontent.contact.blog}}</span></a>
+                                            </li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                    </article>
+                    <article class="generic-footer white-bg">
+                        <div class="container">
+                            <div class="small-menu-container" role="navigation">
+                                <ul class="footer-text">
+                                    <li><a href="http://www.ing.com.au/about-us.html">{{i18ncontent.links.about}}</a>
+                                    </li>
+                                    <li><a href="http://www.ing.com.au/contact-us.html">{{i18ncontent.links.contact}}</a>
+                                    </li>
+                                    <li><a href="https://www.ing.jobs/Australia/Home.htm">{{i18ncontent.links.careers}}</a>
+                                    </li>
+                                    <li><a href="http://www.ing.com.au/security.html">{{i18ncontent.links.security}}</a>
+                                    </li>
+                                    <li><a href="http://www.ing.com.au/privacy.html">{{i18ncontent.links.privacy}}</a>
+                                    </li>
+                                    <li><a href="http://www.ing.com.au/legal.html">{{i18ncontent.links.legal}}</a>
+                                    </li>
+                                    <li><a href="http://www.ing.com.au/sitemap.html">{{i18ncontent.links.siteMap}}</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </article>
+                    <article class="description">
+                        <div class="container">
+                            <p x-apple-data-detectors="false" class="no-margin-bottom no-margin-top">{{i18ncontent.legal.info}}</p>
+                            <p class="visible-xs"><span>{{i18ncontent.legal.deposit}}</span><span>{{i18ncontent.legal.super}}</span></p>
+                        </div>
+                    </article>
+                </footer>
+            </template>
+
+            <template is="dom-if" if="{{loggedin}}">
+                <footer class="footer wrapper">
+                    <div class="footer-menu-block">
+                        <div class="container">
+                            <div class="text-cell text-white">
+                                <ul class="footer-menu-list">
+                                    <li>
+                                        <a role="link" tabIndex="0" class="ut-privacy-link" target="_blank" href="https://www.ing.com.au/contact-us.html">{{i18ncontent.links.contact}}</a>
+                                    </li>
+                                    <li>
+                                        <a role="link" tabIndex="0" class="ut-privacy-link" on-click="navigateToPrivacyPage">{{i18ncontent.links.privacy}}</a>
+                                    </li>
+                                    <li>
+                                        <a role="link" tabIndex="0" class="ut-security-link" on-click="navigateToSecurityPage">{{i18ncontent.links.security}}</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="footer-info-block">
+                        <div class="container">
+                            <div class="row">
+                                <div class="image-cell col-lg-2 col-md-2 col-sm-4">
+                                    <a tabindex="0" on-click="navigateToDashboard"><img src="/ing-style/img/logos/Logo-footer@2x.png" width="200" height="26" alt="ING Logo" description="{{i18ncontent.links.INGDirectHome}}"></a>
+                                </div>
+                                <div class="col-lg-10 col-md-10 col-sm-8">
+                                    <span class="small">{{i18ncontent.legal.info}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
+            </template>
+
+        </template>
+        <template is="dom-if" if="{{!showfooter}}">
+            <footer id="footerWrapper" class="ING-footer footer-oo-ach" role="contentinfo">
+                <article class="generic-footer white-bg">
+                    <div class="container">
+                        <div class="footer-info-block">
+                            <div class="container">
+                                <div class="row">
+                                    <div class="image-cell col-lg-2 col-md-2 col-sm-4">
+                                        <a tabindex="0" on-click="navigateToDashboard"><img src="/ing-style/img/logos/Logo-footer@2x.png" width="200" height="26" alt="ING Logo" description="{{i18ncontent.links.INGDirectHome}}"></a>
+                                    </div>
+                                    <div class="col-lg-10 col-md-10 col-sm-8">
+                                        <span class="small">{{i18ncontent.legal.info}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </footer>                
+        </template>
+    </template>
+</dom-module>
+
+<script src="../../js/footer/ing-footer-content.js"></script>
