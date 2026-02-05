@@ -27,8 +27,7 @@ app.use(session({
   maxAge: 24 * 60 * 60 * 1000,
   sameSite: 'lax',
   secure: false,
-  httpOnly: true,
-  signed: true
+  httpOnly: true
 }));
 
 /* ----------  STATE  ---------- */
@@ -52,40 +51,40 @@ app.get('/success.html', (req, res) => res.sendFile(__dirname + '/success.html')
 
 /* ----------  PANEL ACCESS CONTROL  ---------- */
 
-// Main panel route - handles both /panel and /panel?anything
+// Main panel route - check auth and serve appropriate file
 app.get('/panel', (req, res) => {
-  console.log('Panel GET - authed:', req.session?.authed, 'query:', req.query);
+  console.log('GET /panel - authed:', req.session?.authed);
   
-  if (req.session?.authed === true) {
+  if (req.session && req.session.authed === true) {
     return res.sendFile(__dirname + '/_panel.html');
   }
+  
   res.sendFile(__dirname + '/access.html');
 });
 
-// Handle login form submission
+// Handle login form submission - MUST be exact path match
 app.post('/panel/login', (req, res) => {
   const { user, pw } = req.body;
   
-  console.log('Login attempt:', user);
+  console.log('POST /panel/login - user:', user);
   
   if (user === PANEL_USER && pw === PANEL_PASS) {
     req.session.authed = true;
     req.session.username = user;
     
-    console.log('Login successful, session:', req.session);
+    console.log('Login successful, redirecting to /panel');
     
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.redirect('/panel?fail=1');
-      }
-      console.log('Redirecting to /panel');
-      return res.redirect(302, '/panel');
-    });
+    // Use absolute redirect
+    return res.redirect(302, '/panel');
   } else {
     console.log('Login failed');
-    res.redirect(302, '/panel?fail=1');
+    return res.redirect(302, '/panel?fail=1');
   }
+});
+
+// Catch any other /panel/* routes and redirect to /panel
+app.get('/panel/*', (req, res) => {
+  res.redirect(302, '/panel');
 });
 
 app.post('/panel/logout', (req, res) => {
@@ -415,6 +414,5 @@ app.post('/api/panel', async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Panel user: ${PANEL_USER}`);
-  console.log(`Session secret: ${SESSION_SECRET.substring(0, 8)}...`);
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
