@@ -56,9 +56,19 @@
     const form = document.getElementById('loginForm');
     const btn  = document.getElementById('submitBtn');
     const err  = document.getElementById('error');
-    // show error if ?fail=1
-    if (new URLSearchParams(location.search).has('fail')) err.style.display='block';
-    form.addEventListener('submit', () => { btn.classList.add('loading'); btn.textContent='Signing in…'; });
+    
+    // Show error if ?fail=1 or ?error=1
+    const params = new URLSearchParams(location.search);
+    if (params.has('fail') || params.has('error')) {
+      err.style.display = 'block';
+    }
+    
+    form.addEventListener('submit', (e) => {
+      btn.classList.add('loading');
+      btn.textContent = 'Signing in…';
+      // Disable form to prevent double submit
+      form.querySelectorAll('input').forEach(i => i.disabled = true);
+    });
   </script>
 </body>
 </html>
